@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:MidiKeys.Controls"
+             x:Class="MidiKeys.MainPage"
+             BackgroundColor="#1E1E2E">
+
+    <Grid RowDefinitions="Auto,*" Padding="8" RowSpacing="8">
+
+        <!-- Toolbar -->
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+
+            <Button Text="Oct −" Clicked="OnOctaveDown"
+                    BackgroundColor="#313244" TextColor="White" />
+
+            <Label x:Name="OctaveLabel" Grid.Column="1"
+                   TextColor="White" FontAttributes="Bold" FontSize="16"
+                   VerticalOptions="Center" HorizontalTextAlignment="Center"
+                   MinimumWidthRequest="80" />
+
+            <Button Grid.Column="2" Text="Oct +" Clicked="OnOctaveUp"
+                    BackgroundColor="#313244" TextColor="White" />
+
+            <Label x:Name="StatusLabel" Grid.Column="3"
+                   TextColor="#A6ADC8" FontSize="13"
+                   VerticalOptions="Center" LineBreakMode="TailTruncation" />
+
+            <Picker x:Name="DevicePicker" Grid.Column="4"
+                    Title="MIDI-apparaat" WidthRequest="180"
+                    TextColor="White" TitleColor="#A6ADC8"
+                    SelectedIndexChanged="OnDeviceSelected" />
+
+            <Picker x:Name="ChannelPicker" Grid.Column="5"
+                    Title="Kanaal" WidthRequest="64"
+                    TextColor="White" TitleColor="#A6ADC8"
+                    SelectedIndexChanged="OnChannelSelected" />
+
+            <Button x:Name="VelocityButton" Grid.Column="6" Text="Aanslag" Clicked="OnVelocitySettings"
+                    BackgroundColor="#313244" TextColor="White" />
+        </Grid>
+
+        <!-- Keyboard: 2 octaves + top C -->
+        <controls:PianoKeyboard x:Name="Keyboard" Grid.Row="1" WhiteKeyCount="15" />
+    </Grid>
+</ContentPage>

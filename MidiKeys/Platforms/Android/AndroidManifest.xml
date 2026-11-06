@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:allowBackup="true"
+               android:icon="@mipmap/appicon"
+               android:roundIcon="@mipmap/appicon_round"
+               android:supportsRtl="true" />
+
+  <!-- android.media.midi; USB host is needed for the cable but not required to install -->
+  <uses-feature android:name="android.software.midi" android:required="true" />
+  <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+  <!-- Android 12+: accelerometer above 200 Hz, better for tap detection (normal permission, no prompt) -->
+  <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+</manifest>
