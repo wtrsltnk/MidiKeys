@@ -9,7 +9,7 @@ namespace MidiKeys.Controls;
 public class MidiDevicePicker : VerticalStackLayout
 {
     readonly IMidiOutput _midi;
-    readonly Picker _picker = new() { Title = "MIDI-apparaat" };
+    readonly Picker _picker = new();
     readonly Label _status = new() { FontSize = 13, TextColor = Theme.SilkMid, LineBreakMode = LineBreakMode.TailTruncation };
 
     List<MidiOutputDevice> _devices = [];
@@ -18,8 +18,15 @@ public class MidiDevicePicker : VerticalStackLayout
     public MidiDevicePicker(IMidiOutput midi)
     {
         _midi = midi;
-        Spacing = 2;
-        Children.Add(Theme.Print("MIDI-apparaat"));
+        Spacing = 4;
+        // Same heading as the other side-menu sections; the picker itself has no title.
+        Children.Add(new Label
+        {
+            Text = "MIDI-APPARAAT",
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Theme.Orange,
+        });
         Children.Add(_picker);
         Children.Add(_status);
 

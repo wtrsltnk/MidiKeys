@@ -5,7 +5,15 @@ arpeggiators that send MIDI over a class-compliant USB MIDI cable (e.g. CME C2MI
 to a synth with 5-pin DIN. The look follows the Roland TR-808: charcoal panel, off-white
 print, orange accents and step buttons in red / orange / yellow / cream groups.
 
+> **Made with AI.** This app was built with [Claude Code](https://claude.com/claude-code)
+> (Anthropic): the code, this README and the screenshots were produced by the AI, directed
+> and tested by hand.
+
+![Sequencer](docs/screenshots/sequencer.png)
+
 ## Side menu
+<img src="docs/screenshots/menu.png" alt="Side menu" width="600">
+
 The hamburger menu (top left) holds:
 - **Piano**
 - **SEQUENCER** and **ARP** sections. The **+** next to a section title adds one on a MIDI
@@ -24,6 +32,8 @@ On Android the app runs full screen (swipe from the edge to show the system bars
 
 ## Features
 ### Piano
+<img src="docs/screenshots/piano.png" alt="Piano" width="600">
+
 - 2 octaves + top C, multitouch (chords, sliding across keys), haptic feedback
 - Pressed keys light up from pale (soft) to saturated orange (hard) according to the velocity
 - ▼ / ▲ octave (C-1 … C9), MIDI channel 1–16
@@ -50,6 +60,8 @@ The three gate buses are separate gate outputs on the 1601; here they are mapped
 gate, accent and legato because that is what is useful over MIDI.
 
 ### Arp
+<img src="docs/screenshots/arp.png" alt="Arp" width="600">
+
 An arpeggiator with its own keyboard, built so every setting is visible and takes one tap.
 - In the title bar: ▶/■ start/stop and gate length. Stopped, the keyboard plays notes directly.
 - **MODUS**: ↑ up, ↓ down, ↕ up and down (no double top or bottom note), ✋ as played, 🎲 random
