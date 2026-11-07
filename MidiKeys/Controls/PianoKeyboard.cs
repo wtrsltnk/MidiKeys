@@ -60,6 +60,10 @@ public class PianoKeyboard : View
     /// <summary>Absolute MIDI note number that was released.</summary>
     public event EventHandler<int>? NoteOff;
 
+    /// <summary>+1 or −1: the user asked for another octave (Page Up / Page Down on Windows).</summary>
+    public event EventHandler<int>? OctaveShiftRequested;
+
     internal void RaiseNoteOn(NoteEventArgs e) => NoteOn?.Invoke(this, e);
     internal void RaiseNoteOff(int note) => NoteOff?.Invoke(this, note);
+    internal void RaiseOctaveShift(int delta) => OctaveShiftRequested?.Invoke(this, delta);
 }

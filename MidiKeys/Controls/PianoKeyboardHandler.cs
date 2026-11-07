@@ -26,6 +26,7 @@ public class PianoKeyboardHandler : ViewHandler<PianoKeyboard, PianoKeyboardView
         platformView.NoteOn += OnNoteOn;
         platformView.NoteOff += OnNoteOff;
 #if WINDOWS
+        platformView.OctaveShift += OnOctaveShift;
         VirtualView.Loaded += OnLoaded;
         VirtualView.Unloaded += OnUnloaded;
 #endif
@@ -37,6 +38,7 @@ public class PianoKeyboardHandler : ViewHandler<PianoKeyboard, PianoKeyboardView
         platformView.NoteOn -= OnNoteOn;
         platformView.NoteOff -= OnNoteOff;
 #if WINDOWS
+        platformView.OctaveShift -= OnOctaveShift;
         VirtualView.Loaded -= OnLoaded;
         VirtualView.Unloaded -= OnUnloaded;
         OnUnloaded(null, EventArgs.Empty);
@@ -48,6 +50,8 @@ public class PianoKeyboardHandler : ViewHandler<PianoKeyboard, PianoKeyboardView
     void OnNoteOff(int note) => VirtualView?.RaiseNoteOff(note);
 
 #if WINDOWS
+    void OnOctaveShift(int delta) => VirtualView?.RaiseOctaveShift(delta);
+
     Microsoft.Maui.Controls.Window? _window;
 
     void OnLoaded(object? sender, EventArgs e)

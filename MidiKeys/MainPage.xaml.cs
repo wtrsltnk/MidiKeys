@@ -29,6 +29,7 @@ public partial class MainPage : ContentPage
 
         Keyboard.NoteOn += OnKeyboardNoteOn;
         Keyboard.NoteOff += OnKeyboardNoteOff;
+        Keyboard.OctaveShiftRequested += (_, delta) => { if (delta > 0) OnOctaveUp(this, EventArgs.Empty); else OnOctaveDown(this, EventArgs.Empty); };
         Keyboard.VelocityConfig = _velocity.Config;
         _velocity.Changed += (_, _) => Keyboard.VelocityConfig = _velocity.Config;
 

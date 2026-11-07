@@ -31,7 +31,7 @@ without a cable (it has noticeable latency). There is no accelerometer on Window
 area only works on touchscreens that report it.
 
 On Windows you can also play with the PC keyboard, starting at the leftmost C on screen:
-white keys `A S D F G H J K L ; '`, black keys `W E T Y U O P`. Keys play at the fixed velocity.
+white keys `A S D F G H J K L ; '`, black keys `W E T Y U O P`. Keys play at the fixed velocity. Page Up / Page Down change the octave.
 
 ## Connecting
 Cable **OUT** → synth **MIDI IN**. Set the synth to the same channel as the app (default 1).

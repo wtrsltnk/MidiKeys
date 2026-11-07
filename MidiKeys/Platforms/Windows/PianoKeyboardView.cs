@@ -49,6 +49,9 @@ public class PianoKeyboardView : Canvas
     public event Action<NoteEventArgs>? NoteOn;
     public event Action<int>? NoteOff;
 
+    /// <summary>+1 for Page Up, −1 for Page Down.</summary>
+    public event Action<int>? OctaveShift;
+
     public PianoKeyboardView()
     {
         // The keys themselves are hit-testable and their pointer events bubble up to us; we don't rely
@@ -307,7 +310,18 @@ public class PianoKeyboardView : Canvas
     void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         // Calibration measures real taps; key presses would only spoil it.
-        if (_config.Mode == VelocityMode.Calibrate || !KeySemitones.TryGetValue(e.Key, out int semitone))
+        if (_config.Mode == VelocityMode.Calibrate)
+            return;
+
+        if (e.Key is VirtualKey.PageUp or VirtualKey.PageDown)
+        {
+            e.Handled = true;
+            if (!e.KeyStatus.WasKeyDown) // one octave per press, no auto-repeat
+                OctaveShift?.Invoke(e.Key == VirtualKey.PageUp ? 1 : -1);
+            return;
+        }
+
+        if (!KeySemitones.TryGetValue(e.Key, out int semitone))
             return;
         e.Handled = true; // e.g. a focused picker would otherwise jump to an item starting with that letter
 
