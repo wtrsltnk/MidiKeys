@@ -1,7 +1,7 @@
 namespace MidiKeys;
 
-public class App(MainPage mainPage) : Application
+public class App(AppShell shell) : Application
 {
     protected override Window CreateWindow(IActivationState? activationState)
-        => new(mainPage) { Title = "MIDI Keys" };
+        => new(shell) { Title = "MIDI Keys" };
 }
