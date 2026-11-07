@@ -37,10 +37,10 @@ public class PianoKeyboardView : Canvas
     readonly Dictionary<int, int> _noteCounts = new();        // note -> number of sounding touches
     readonly Dictionary<int, (Rectangle Shape, bool Black)> _keys = new();
 
-    readonly SolidColorBrush _whiteBrush = Brush(250, 250, 245);
-    readonly SolidColorBrush _blackBrush = Brush(30, 30, 36);
-    readonly SolidColorBrush _borderBrush = Brush(60, 60, 70);
-    readonly SolidColorBrush _textBrush = Brush(110, 110, 120);
+    readonly SolidColorBrush _whiteBrush = Brush(KeyColors.White);
+    readonly SolidColorBrush _blackBrush = Brush(KeyColors.Black);
+    readonly SolidColorBrush _borderBrush = Brush(KeyColors.Border);
+    readonly SolidColorBrush _textBrush = Brush(KeyColors.Text);
 
     VelocityConfig _config = VelocityConfig.Default;
     int _baseNote = 48;
@@ -48,6 +48,9 @@ public class PianoKeyboardView : Canvas
 
     public event Action<NoteEventArgs>? NoteOn;
     public event Action<int>? NoteOff;
+
+    /// <summary>+1 for Page Up, −1 for Page Down.</summary>
+    public event Action<int>? OctaveShift;
 
     public PianoKeyboardView()
     {
@@ -307,7 +310,18 @@ public class PianoKeyboardView : Canvas
     void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         // Calibration measures real taps; key presses would only spoil it.
-        if (_config.Mode == VelocityMode.Calibrate || !KeySemitones.TryGetValue(e.Key, out int semitone))
+        if (_config.Mode == VelocityMode.Calibrate)
+            return;
+
+        if (e.Key is VirtualKey.PageUp or VirtualKey.PageDown)
+        {
+            e.Handled = true;
+            if (!e.KeyStatus.WasKeyDown) // one octave per press, no auto-repeat
+                OctaveShift?.Invoke(e.Key == VirtualKey.PageUp ? 1 : -1);
+            return;
+        }
+
+        if (!KeySemitones.TryGetValue(e.Key, out int semitone))
             return;
         e.Handled = true; // e.g. a focused picker would otherwise jump to an item starting with that letter
 
@@ -406,4 +420,5 @@ public class PianoKeyboardView : Canvas
     }
 
     static SolidColorBrush Brush(byte r, byte g, byte b) => new(WColor.FromArgb(255, r, g, b));
+    static SolidColorBrush Brush((byte R, byte G, byte B) c) => Brush(c.R, c.G, c.B);
 }

@@ -1,10 +1,13 @@
 namespace MidiKeys.Controls;
 
-/// <summary>Pressed-key colours: pale for a soft touch, saturated for a hard one.</summary>
+/// <summary>Key colours in the TR-808 look; pressed keys turn orange: pale for a soft touch, saturated for a hard one.</summary>
 static class KeyColors
 {
-    static readonly (byte R, byte G, byte B) WhiteSoft = (205, 222, 250), WhiteHard = (35, 95, 235);
-    static readonly (byte R, byte G, byte B) BlackSoft = (70, 80, 110), BlackHard = (125, 180, 255);
+    public static readonly (byte R, byte G, byte B) White = (239, 233, 214), Black = (30, 30, 30);
+    public static readonly (byte R, byte G, byte B) Border = (60, 60, 60), Text = (125, 121, 111);
+
+    static readonly (byte R, byte G, byte B) WhiteSoft = (250, 218, 185), WhiteHard = (240, 125, 25);
+    static readonly (byte R, byte G, byte B) BlackSoft = (95, 60, 30), BlackHard = (255, 150, 60);
 
     /// <param name="velocity">1–127, or null while the velocity is still being measured.</param>
     public static (byte R, byte G, byte B) Pressed(bool black, int? velocity)
