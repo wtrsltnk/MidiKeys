@@ -4,40 +4,35 @@
              xmlns:controls="clr-namespace:MidiKeys.Controls"
              x:Class="MidiKeys.MainPage"
              Title="Piano"
-             BackgroundColor="#1E1E2E">
+             BackgroundColor="#1E1E1E">
 
     <Grid RowDefinitions="Auto,*" Padding="8" RowSpacing="8">
 
         <!-- Toolbar -->
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
 
-            <Button Text="Oct −" Clicked="OnOctaveDown"
-                    BackgroundColor="#313244" TextColor="White" />
+            <Button Text="▼" Clicked="OnOctaveDown" ToolTipProperties.Text="Octaaf omlaag"
+                    FontSize="18" MinimumWidthRequest="44"
+                    BackgroundColor="#333333" TextColor="#F2EFE6" />
 
             <Label x:Name="OctaveLabel" Grid.Column="1"
-                   TextColor="White" FontAttributes="Bold" FontSize="16"
+                   TextColor="#F2EFE6" FontAttributes="Bold" FontSize="16"
                    VerticalOptions="Center" HorizontalTextAlignment="Center"
                    MinimumWidthRequest="80" />
 
-            <Button Grid.Column="2" Text="Oct +" Clicked="OnOctaveUp"
-                    BackgroundColor="#313244" TextColor="White" />
+            <Button Grid.Column="2" Text="▲" Clicked="OnOctaveUp" ToolTipProperties.Text="Octaaf omhoog"
+                    FontSize="18" MinimumWidthRequest="44"
+                    BackgroundColor="#333333" TextColor="#F2EFE6" />
 
-            <Label x:Name="StatusLabel" Grid.Column="3"
-                   TextColor="#A6ADC8" FontSize="13"
-                   VerticalOptions="Center" LineBreakMode="TailTruncation" />
-
-            <Picker x:Name="DevicePicker" Grid.Column="4"
-                    Title="MIDI-apparaat" WidthRequest="180"
-                    TextColor="White" TitleColor="#A6ADC8"
-                    SelectedIndexChanged="OnDeviceSelected" />
-
-            <Picker x:Name="ChannelPicker" Grid.Column="5"
+            <!-- The MIDI device is chosen in the side menu. -->
+            <Picker x:Name="ChannelPicker" Grid.Column="4"
                     Title="Kanaal" WidthRequest="64"
-                    TextColor="White" TitleColor="#A6ADC8"
+                    TextColor="#F2EFE6" TitleColor="#BDB8AC"
                     SelectedIndexChanged="OnChannelSelected" />
 
-            <Button x:Name="VelocityButton" Grid.Column="6" Text="Aanslag" Clicked="OnVelocitySettings"
-                    BackgroundColor="#313244" TextColor="White" />
+            <Button x:Name="VelocityButton" Grid.Column="5" Text="⚙" Clicked="OnVelocitySettings" ToolTipProperties.Text="Aanslaggevoeligheid"
+                    FontSize="18" MinimumWidthRequest="44"
+                    BackgroundColor="#333333" TextColor="#F2EFE6" />
         </Grid>
 
         <!-- Keyboard: 2 octaves + top C -->

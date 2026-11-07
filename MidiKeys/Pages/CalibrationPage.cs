@@ -16,10 +16,10 @@ public class CalibrationPage : ContentPage
     readonly VelocitySettings _settings;
     readonly List<NoteEventArgs> _soft = [];
     readonly List<NoteEventArgs> _hard = [];
-    readonly Label _instruction = new() { FontSize = 20, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center };
-    readonly Label _progress = new() { FontSize = 14, TextColor = Color.FromArgb("#A6ADC8"), HorizontalTextAlignment = TextAlignment.Center };
-    readonly Label _lastTap = new() { FontSize = 12, TextColor = Color.FromArgb("#7F849C"), HorizontalTextAlignment = TextAlignment.Center };
-    readonly Button _save = new() { Text = "Opslaan", IsEnabled = false, BackgroundColor = Color.FromArgb("#89B4FA"), TextColor = Color.FromArgb("#1E1E2E") };
+    readonly Label _instruction = new() { FontSize = 20, TextColor = Theme.Silk, HorizontalTextAlignment = TextAlignment.Center };
+    readonly Label _progress = new() { FontSize = 14, TextColor = Theme.SilkMid, HorizontalTextAlignment = TextAlignment.Center };
+    readonly Label _lastTap = new() { FontSize = 12, TextColor = Theme.SilkDim, HorizontalTextAlignment = TextAlignment.Center };
+    readonly Button _save = new() { Text = "Opslaan", IsEnabled = false, BackgroundColor = Theme.Red, TextColor = Theme.Silk };
     readonly PianoKeyboard _keys;
 
     Phase _phase = Phase.Soft;
@@ -28,7 +28,7 @@ public class CalibrationPage : ContentPage
     public CalibrationPage(VelocitySettings settings)
     {
         _settings = settings;
-        BackgroundColor = Color.FromArgb("#1E1E2E");
+        BackgroundColor = Theme.Panel;
 
         _keys = new PianoKeyboard
         {
@@ -38,10 +38,10 @@ public class CalibrationPage : ContentPage
         };
         _keys.NoteOn += OnTap;
 
-        var retry = new Button { Text = "Opnieuw", BackgroundColor = Color.FromArgb("#45475A"), TextColor = Colors.White };
+        var retry = new Button { Text = "Opnieuw", BackgroundColor = Theme.Line, TextColor = Theme.Silk };
         retry.Clicked += (_, _) => Restart();
 
-        var cancel = new Button { Text = "Annuleren", BackgroundColor = Color.FromArgb("#45475A"), TextColor = Colors.White };
+        var cancel = new Button { Text = "Annuleren", BackgroundColor = Theme.Line, TextColor = Theme.Silk };
         cancel.Clicked += async (_, _) => await Navigation.PopModalAsync();
 
         _save.Clicked += async (_, _) =>
@@ -62,7 +62,7 @@ public class CalibrationPage : ContentPage
                 new Label
                 {
                     Text = "Houd of leg het toestel zoals je straks speelt. Tik met één vinger, steeds los.",
-                    FontSize = 12, TextColor = Color.FromArgb("#7F849C"), HorizontalTextAlignment = TextAlignment.Center,
+                    FontSize = 12, TextColor = Theme.SilkDim, HorizontalTextAlignment = TextAlignment.Center,
                 },
             },
         };

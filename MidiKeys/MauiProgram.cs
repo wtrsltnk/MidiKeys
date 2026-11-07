@@ -20,10 +20,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMidiOutput, WindowsMidiOutput>();
 #endif
         builder.Services.AddSingleton<VelocitySettings>();
-        builder.Services.AddSingleton<StepSequencer>();
+        builder.Services.AddSingleton<MusicClock>();
+        builder.Services.AddSingleton<Instruments>();
         builder.Services.AddSingleton<MainPage>();
-        builder.Services.AddSingleton<SequencerPage>();
-        builder.Services.AddSingleton<ArpPage>();
         builder.Services.AddSingleton<AppShell>();
 
         return builder.Build();

@@ -1,3 +1,8 @@
 <Solution>
-  <Project Path="MidiKeys/MidiKeys.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="MidiKeys/MidiKeys.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>

@@ -3,7 +3,7 @@ using MidiKeys.Services;
 namespace MidiKeys.Controls;
 
 /// <summary>
-/// Hardware-style step panel: per step a LED, a pitch slider, three gate-bus switches and a
+/// Hardware-style step panel (TR-808 colours): per step a LED, a pitch slider, three gate-bus switches and a
 /// play/skip/reset switch, all drawn in one GraphicsView so it looks the same on every platform.
 /// </summary>
 public class SequencerPanel : GraphicsView, IDrawable
@@ -11,16 +11,16 @@ public class SequencerPanel : GraphicsView, IDrawable
     static readonly string[] NoteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     static readonly string[] RowLabels = ["GATE", "ACCENT", "LEGATO", "MODE"];
 
-    static readonly Color Panel = Color.FromArgb("#1B1B1F");
-    static readonly Color Silk = Color.FromArgb("#E8E2D0");        // panel print
-    static readonly Color SilkDim = Color.FromArgb("#77736A");
-    static readonly Color Track = Color.FromArgb("#050506");
-    static readonly Color Cap = Color.FromArgb("#D9D6CC");
-    static readonly Color CapLine = Color.FromArgb("#E5483A");
-    static readonly Color LedOn = Color.FromArgb("#FF3B30");
-    static readonly Color LedOff = Color.FromArgb("#3A1D1D");
-    static readonly Color SwitchOff = Color.FromArgb("#2C2C31");
-    static readonly Color[] SwitchOn = [Color.FromArgb("#E5483A"), Color.FromArgb("#F0A030"), Color.FromArgb("#E8D44D")];
+    static readonly Color Panel = Theme.Panel;
+    static readonly Color Silk = Theme.Silk;                       // panel print
+    static readonly Color SilkDim = Theme.SilkDim;
+    static readonly Color Track = Color.FromArgb("#0C0C0C");
+    static readonly Color Cap = Theme.Cap;
+    static readonly Color CapLine = Theme.Orange;
+    static readonly Color LedOn = Theme.LedOn;
+    static readonly Color LedOff = Theme.LedOff;
+    static readonly Color SwitchOff = Theme.Key;
+    static readonly Color[] SwitchOn = [Theme.Red, Theme.Orange, Theme.Yellow];
 
     enum Part { None, Slider, Gate, Accent, Legato, Mode }
 
@@ -170,9 +170,13 @@ public class SequencerPanel : GraphicsView, IDrawable
         float r = rh * 0.24f;
         canvas.FillColor = current ? LedOn : LedOff;
         canvas.FillCircle(cx, rh * 0.45f, r);
-        canvas.FontColor = skipped ? SilkDim : Silk;
+        // 808-style colour strip behind the number: red, orange, yellow, cream per group of four
+        float stripW = cw * 0.8f, stripH = rh * 0.6f;
+        canvas.FillColor = skipped ? SwitchOff : Theme.StepColor(i);
+        canvas.FillRoundedRectangle(cx - stripW / 2, rh * 0.9f, stripW, stripH, 2);
+        canvas.FontColor = skipped ? SilkDim : Theme.Ink;
         string number = split ? $"{(i < 8 ? 'A' : 'B')}{i % 8 + 1}" : $"{i + 1}";
-        canvas.DrawString(number, x, rh * 0.9f, cw, rh * 0.6f, HorizontalAlignment.Center, VerticalAlignment.Center);
+        canvas.DrawString(number, x, rh * 0.9f, cw, stripH, HorizontalAlignment.Center, VerticalAlignment.Center);
 
         // Slider: track + cap
         float trackW = Math.Max(4, cw * 0.1f);
@@ -204,7 +208,7 @@ public class SequencerPanel : GraphicsView, IDrawable
 
         // Mode switch
         float my = RowY(3);
-        canvas.FillColor = step.Mode == StepMode.Play ? SwitchOff : Color.FromArgb("#45475A");
+        canvas.FillColor = step.Mode == StepMode.Play ? SwitchOff : Theme.Line;
         canvas.FillRoundedRectangle(cx - sw / 2, my, sw, sh, 3);
         canvas.FontColor = step.Mode == StepMode.Reset ? LedOn : Silk;
         canvas.FontSize = rh * 0.36f;

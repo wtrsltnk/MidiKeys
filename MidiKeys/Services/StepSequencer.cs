@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
 namespace MidiKeys.Services;
 
 public enum StepMode
@@ -28,11 +25,11 @@ public sealed class SequencerStep
 }
 
 /// <summary>
-/// 16-step sequencer after the ARP / Behringer 1601: one 16-step sequence or two independent
-/// 8-step sequences (each on its own MIDI channel), three gate buses, skip/reset per step and
-/// an optional random order. Steps are sixteenth notes; timing runs on its own thread.
+/// 16-step sequencer after the ARP / Behringer 1601 on one MIDI channel: one 16-step sequence or
+/// two independent 8-step sequences (two voices on that channel), three gate buses, skip/reset per step and
+/// an optional random order. Steps are sixteenth notes on the shared <see cref="MusicClock"/>.
 /// </summary>
-public sealed class StepSequencer : IDisposable
+public sealed class StepSequencer : IClockClient, IDisposable
 {
     public const int StepCount = 16;
     public const int PitchRange = 24;
@@ -40,23 +37,16 @@ public sealed class StepSequencer : IDisposable
     const int AccentVelocity = 127;
     const double LegatoOverlapMs = 5; // note-off lands just after the next note-on
 
-    readonly record struct Sounding(int Channel, int Note, double OffAt, bool Legato);
-
-    readonly IMidiOutput _midi;
+    readonly MusicClock _clock;
+    readonly SoundingNotes _sounding;
     readonly object _lock = new();
     readonly Random _random = new();
     readonly int[] _positions = [-1, -1];          // current step per sequence (A, B)
-    readonly List<Sounding> _sounding = new();     // sequencer thread only
 
-    Thread? _thread;
     volatile bool _running;
-    volatile int _bpm = 120;
     double _gateLength = 0.5;
 
     public SequencerStep[] Steps { get; } = Enumerable.Range(0, StepCount).Select(_ => new SequencerStep()).ToArray();
-
-    /// <summary>30–300 BPM; a step is a sixteenth note.</summary>
-    public int Bpm { get => _bpm; set => _bpm = Math.Clamp(value, 30, 300); }
 
     /// <summary>Gate length as a fraction of a step (staccato … nearly legato).</summary>
     public double GateLength { get => _gateLength; set => _gateLength = Math.Clamp(value, 0.05, 0.95); }
@@ -69,20 +59,22 @@ public sealed class StepSequencer : IDisposable
     /// <summary>MIDI note of a slider at the bottom.</summary>
     public int BaseNote { get; set; } = 48;
 
-    public int ChannelA { get; set; }
-    public int ChannelB { get; set; } = 1;
+    /// <summary>MIDI channel (0–15) this sequencer plays on; settings are stored per channel.</summary>
+    public int Channel { get; }
 
     public bool IsRunning => _running;
 
-    /// <summary>Raised on the sequencer thread after every step: current step per sequence (-1 = none).</summary>
+    /// <summary>Raised on the clock thread after every step: current step per sequence (-1 = none).</summary>
     public event Action<int[]>? StepChanged;
 
     /// <summary>Raised on the thread that called Start/Stop.</summary>
     public event EventHandler? RunningChanged;
 
-    public StepSequencer(IMidiOutput midi)
+    public StepSequencer(IMidiOutput midi, MusicClock clock, int channel)
     {
-        _midi = midi;
+        Channel = channel;
+        _clock = clock;
+        _sounding = new SoundingNotes(midi);
         Load();
     }
 
@@ -90,8 +82,7 @@ public sealed class StepSequencer : IDisposable
     {
         if (_running) return;
         _running = true;
-        _thread = new Thread(Run) { IsBackground = true, Priority = ThreadPriority.AboveNormal, Name = "Sequencer" };
-        _thread.Start();
+        _clock.Join(this);
         RunningChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -99,8 +90,7 @@ public sealed class StepSequencer : IDisposable
     {
         if (!_running) return;
         _running = false;
-        _thread?.Join(500);
-        _thread = null;
+        _clock.Leave(this);
         RunningChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -119,66 +109,30 @@ public sealed class StepSequencer : IDisposable
 
     public void Dispose() => Stop();
 
-    // ---------------------------------------------------------------- timing
+    // ---------------------------------------------------------------- timing (clock thread)
 
-    void Run()
+    const int TicksPerStep = MusicClock.Ppqn / 4; // a step is a sixteenth note
+
+    void IClockClient.ReleaseDue(double now) => _sounding.ReleaseDue(now);
+    double IClockClient.NextRelease => _sounding.NextRelease;
+    void IClockClient.ReleaseAll() => _sounding.ReleaseAll();
+
+    void IClockClient.Tick(long tick, double now, double tickMs)
     {
-        TimerResolution(true);
-        try
-        {
-            var clock = Stopwatch.StartNew();
-            double nextStep = 0;
-            while (_running)
-            {
-                double now = clock.Elapsed.TotalMilliseconds;
-                ReleaseDue(now);
+        if (tick % TicksPerStep != 0) return;
+        double stepMs = tickMs * TicksPerStep;
 
-                if (now >= nextStep)
-                {
-                    double stepMs = 60000.0 / _bpm / 4;
-                    Tick(now, stepMs);
-                    nextStep += stepMs;
-                    if (nextStep < now) nextStep = now + stepMs; // fell behind (debugger, sleep): don't rush to catch up
-                }
-
-                double nextEvent = _sounding.Count > 0 ? Math.Min(nextStep, _sounding.Min(s => s.OffAt)) : nextStep;
-                double wait = nextEvent - clock.Elapsed.TotalMilliseconds;
-                if (wait > 3) Thread.Sleep(1);
-                else if (wait > 0) Thread.Yield();
-            }
-        }
-        finally
-        {
-            foreach (var s in _sounding)
-                _midi.NoteOff(s.Channel, s.Note);
-            _sounding.Clear();
-            TimerResolution(false);
-        }
-    }
-
-    void ReleaseDue(double now)
-    {
-        for (int i = _sounding.Count - 1; i >= 0; i--)
-        {
-            if (_sounding[i].OffAt > now) continue;
-            _midi.NoteOff(_sounding[i].Channel, _sounding[i].Note);
-            _sounding.RemoveAt(i);
-        }
-    }
-
-    void Tick(double now, double stepMs)
-    {
         int[] snapshot;
         lock (_lock)
         {
             if (Split)
             {
-                PlayLane(0, 0, 8, ChannelA, now, stepMs);
-                PlayLane(1, 8, 8, ChannelB, now, stepMs);
+                PlayLane(0, 0, 8, Channel, now, stepMs);
+                PlayLane(1, 8, 8, Channel, now, stepMs);
             }
             else
             {
-                PlayLane(0, 0, StepCount, ChannelA, now, stepMs);
+                PlayLane(0, 0, StepCount, Channel, now, stepMs);
                 _positions[1] = -1;
             }
             snapshot = (int[])_positions.Clone();
@@ -198,16 +152,8 @@ public sealed class StepSequencer : IDisposable
         int note = Math.Clamp(BaseNote + step.Pitch, 0, 127);
         double offAt = now + (step.Legato ? stepMs + LegatoOverlapMs : Math.Max(5, stepMs * _gateLength));
 
-        // Previous step was legato on the same note: tie instead of retriggering.
-        int tied = _sounding.FindIndex(s => s.Channel == channel && s.Note == note && s.Legato);
-        if (tied >= 0)
-        {
-            _sounding[tied] = new Sounding(channel, note, offAt, step.Legato);
-            return;
-        }
-
-        _midi.NoteOn(channel, note, step.Accent ? AccentVelocity : NormalVelocity);
-        _sounding.Add(new Sounding(channel, note, offAt, step.Legato));
+        if (!_sounding.TryTie(channel, note, offAt, step.Legato))
+            _sounding.Play(channel, note, step.Accent ? AccentVelocity : NormalVelocity, offAt, step.Legato);
     }
 
     int NextPosition(int pos, int start, int length)
@@ -231,47 +177,39 @@ public sealed class StepSequencer : IDisposable
         return -1; // every step is skipped
     }
 
-    // Windows sleeps in ~15 ms slices by default; ask for 1 ms while running.
-    static void TimerResolution(bool fine)
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        if (fine) TimeBeginPeriod(1); else TimeEndPeriod(1);
-    }
-
-    [DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
-    static extern uint TimeBeginPeriod(uint ms);
-
-    [DllImport("winmm.dll", EntryPoint = "timeEndPeriod")]
-    static extern uint TimeEndPeriod(uint ms);
-
     // ---------------------------------------------------------------- persistence
+
+    static readonly string[] Keys = ["steps", "gate", "split", "random", "base"];
+
+    string Key(string name) => $"seq{Channel}.{name}";
+
+    /// <summary>Removes the stored settings (the sequencer is deleted).</summary>
+    public void Forget()
+    {
+        foreach (var name in Keys)
+            Preferences.Default.Remove(Key(name));
+    }
 
     public void Save()
     {
         var p = Preferences.Default;
-        p.Set("seq.steps", string.Join(';', Steps.Select(s =>
+        p.Set(Key("steps"), string.Join(';', Steps.Select(s =>
             $"{s.Pitch}:{(s.Gate ? "g" : "")}{(s.Accent ? "a" : "")}{(s.Legato ? "l" : "")}:{(int)s.Mode}")));
-        p.Set("seq.bpm", Bpm);
-        p.Set("seq.gate", GateLength);
-        p.Set("seq.split", Split);
-        p.Set("seq.random", RandomOrder);
-        p.Set("seq.base", BaseNote);
-        p.Set("seq.chA", ChannelA);
-        p.Set("seq.chB", ChannelB);
+        p.Set(Key("gate"), GateLength);
+        p.Set(Key("split"), Split);
+        p.Set(Key("random"), RandomOrder);
+        p.Set(Key("base"), BaseNote);
     }
 
     void Load()
     {
         var p = Preferences.Default;
-        Bpm = p.Get("seq.bpm", Bpm);
-        GateLength = p.Get("seq.gate", GateLength);
-        Split = p.Get("seq.split", Split);
-        RandomOrder = p.Get("seq.random", RandomOrder);
-        BaseNote = p.Get("seq.base", BaseNote);
-        ChannelA = p.Get("seq.chA", ChannelA);
-        ChannelB = p.Get("seq.chB", ChannelB);
+        GateLength = p.Get(Key("gate"), GateLength);
+        Split = p.Get(Key("split"), Split);
+        RandomOrder = p.Get(Key("random"), RandomOrder);
+        BaseNote = p.Get(Key("base"), BaseNote);
 
-        var parts = p.Get("seq.steps", "").Split(';');
+        var parts = p.Get(Key("steps"), "").Split(';');
         for (int i = 0; i < Math.Min(parts.Length, StepCount); i++)
         {
             var f = parts[i].Split(':');

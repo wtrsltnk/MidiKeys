@@ -1,3 +1,4 @@
+using MidiKeys.Controls;
 using MidiKeys.Services;
 
 namespace MidiKeys.Pages;
@@ -14,27 +15,27 @@ public class SettingsPage : ContentPage
     ];
 
     readonly VelocitySettings _settings;
-    readonly Picker _mode = new() { ItemsSource = ModeNames, TextColor = Colors.White };
+    readonly Picker _mode = new() { ItemsSource = ModeNames, TextColor = Theme.Silk };
     readonly Slider _fixed = Make(1, 127);
     readonly Slider _min = Make(1, 127);
     readonly Slider _max = Make(1, 127);
     readonly Slider _window = Make(5, 50);
-    readonly Label _calStatus = Text("", 13, "#A6ADC8");
+    readonly Label _calStatus = Text("", 13, Theme.SilkMid);
 
     public SettingsPage(VelocitySettings settings)
     {
         _settings = settings;
         Title = "Aanslag";
-        BackgroundColor = Color.FromArgb("#1E1E2E");
+        BackgroundColor = Theme.Panel;
 
-        var calibrate = new Button { Text = "Kalibreren…", BackgroundColor = Color.FromArgb("#45475A"), TextColor = Colors.White };
+        var calibrate = new Button { Text = "Kalibreren…", BackgroundColor = Theme.Line, TextColor = Theme.Silk };
         calibrate.Clicked += async (_, _) =>
         {
             Apply();
             await Navigation.PushModalAsync(new CalibrationPage(_settings));
         };
 
-        var close = new Button { Text = "Klaar", BackgroundColor = Color.FromArgb("#89B4FA"), TextColor = Color.FromArgb("#1E1E2E") };
+        var close = new Button { Text = "Klaar", BackgroundColor = Theme.Red, TextColor = Theme.Silk };
         close.Clicked += async (_, _) =>
         {
             Apply();
@@ -49,15 +50,15 @@ public class SettingsPage : ContentPage
                 Spacing = 10,
                 Children =
                 {
-                    Text("Aanslaggevoeligheid", 20, "#FFFFFF"),
-                    Text("Bron", 14, "#A6ADC8"), _mode,
+                    Text("Aanslaggevoeligheid", 20, Theme.Silk),
+                    Text("Bron", 14, Theme.SilkMid), _mode,
                     Row("Vaste velocity", _fixed, v => $"{v:0}"),
                     Row("Minimale velocity (zachtste aanslag)", _min, v => $"{v:0}"),
                     Row("Maximale velocity (hardste aanslag)", _max, v => $"{v:0}"),
                     Row("Meetvenster (extra latency)", _window, v => $"{v:0} ms"),
                     Text("Contactvlak en versnellingsmeter worden een korte tijd na het aanraken gemeten; "
-                         + "zo lang wordt de noot uitgesteld. 15–25 ms is meestal een goede balans.", 12, "#7F849C"),
-                    new BoxView { HeightRequest = 1, Color = Color.FromArgb("#45475A"), Margin = new Thickness(0, 6) },
+                         + "zo lang wordt de noot uitgesteld. 15–25 ms is meestal een goede balans.", 12, Theme.SilkDim),
+                    new BoxView { HeightRequest = 1, Color = Theme.Line, Margin = new Thickness(0, 6) },
                     _calStatus,
                     calibrate,
                     close,
@@ -104,12 +105,12 @@ public class SettingsPage : ContentPage
 
     static Slider Make(double min, double max) => new() { Maximum = max, Minimum = min };
 
-    static Label Text(string text, double size, string color) =>
-        new() { Text = text, FontSize = size, TextColor = Color.FromArgb(color) };
+    static Label Text(string text, double size, Color color) =>
+        new() { Text = text, FontSize = size, TextColor = color };
 
     static View Row(string title, Slider slider, Func<double, string> format)
     {
-        var value = Text(format(slider.Value), 14, "#FFFFFF");
+        var value = Text(format(slider.Value), 14, Theme.Silk);
         slider.ValueChanged += (_, e) => value.Text = format(e.NewValue);
         return new VerticalStackLayout
         {
@@ -119,7 +120,7 @@ public class SettingsPage : ContentPage
                 new Grid
                 {
                     ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-                    Children = { Text(title, 14, "#A6ADC8"), value },
+                    Children = { Text(title, 14, Theme.SilkMid), value },
                 },
                 slider,
             },

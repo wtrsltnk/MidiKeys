@@ -38,11 +38,11 @@ public class PianoKeyboardView : AView
     readonly Dictionary<int, int> _noteCounts = new(); // note -> number of sounding touches
     readonly ARectF _rect = new();
 
-    readonly APaint _whitePaint = Fill(AColor.Rgb(250, 250, 245));
-    readonly APaint _blackPaint = Fill(AColor.Rgb(30, 30, 36));
-    readonly APaint _pressedPaint = Fill(AColor.Rgb(137, 180, 250)); // colour set per key from its velocity
-    readonly APaint _borderPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = AColor.Rgb(60, 60, 70) };
-    readonly APaint _textPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = AColor.Rgb(110, 110, 120) };
+    readonly APaint _whitePaint = Fill(Rgb(KeyColors.White));
+    readonly APaint _blackPaint = Fill(Rgb(KeyColors.Black));
+    readonly APaint _pressedPaint = Fill(Rgb(KeyColors.White)); // colour set per key from its velocity
+    readonly APaint _borderPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = Rgb(KeyColors.Border) };
+    readonly APaint _textPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = Rgb(KeyColors.Text) };
 
     AccelSampler? _accel;
     VelocityConfig _config = VelocityConfig.Default;
@@ -359,6 +359,8 @@ public class PianoKeyboardView : AView
     // ---------------------------------------------------------------- velocity
 
     int ComputeVelocity(ActiveTouch t) => VelocityMath.Compute(_config, t.MaxSize, t.Accel, t.Position);
+
+    static AColor Rgb((byte R, byte G, byte B) c) => AColor.Rgb(c.R, c.G, c.B);
 
     static APaint Fill(AColor color) => new(Android.Graphics.PaintFlags.AntiAlias) { Color = color };
 }
