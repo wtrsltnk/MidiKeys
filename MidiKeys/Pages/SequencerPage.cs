@@ -24,10 +24,9 @@ public class SequencerPage : ContentPage
     readonly List<Action> _refreshers = new();
 
     readonly Button _startStop = IconButton("▶", "Start");
-    readonly Label _gateLabel = Text("");
     readonly Label _octaveLabel = Text("");
 
-    public SequencerPage(StepSequencer sequencer)
+    public SequencerPage(StepSequencer sequencer, MusicClock clock)
     {
         _seq = sequencer;
         Title = $"1601 SEQUENCER (ch{sequencer.Channel + 1})";
@@ -40,14 +39,13 @@ public class SequencerPage : ContentPage
         _seq.StepChanged += positions => Dispatcher.Dispatch(() => _panel.ShowPositions(positions));
         _seq.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop with the gate length next to it, back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop, then tempo and gate length (a tap opens a popup to change them), back to step 1
         _startStop.Clicked += (_, _) => { if (_seq.IsRunning) _seq.Stop(); else _seq.Start(); };
-        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _seq.GateLength * 100, WidthRequest = 120 };
-        gate.ValueChanged += (_, e) => { _seq.GateLength = e.NewValue / 100; Refresh(); };
-        gate.DragCompleted += (_, _) => _seq.Save();
+        var gate = ValueButton.Percent("PULSE WIDTH", 0.05, 0.95, () => _seq.GateLength, v => _seq.GateLength = v);
+        gate.Done += (_, _) => _seq.Save();
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _seq.Reset();
-        PageHeader.Set(this, _startStop, Group(Theme.Print("PULSE WIDTH"), gate, _gateLabel), reset);
+        PageHeader.Set(this, _startStop, ValueButton.Tempo(clock), gate, reset);
 
         // ---- the panel's switches as large buttons
 
@@ -101,7 +99,6 @@ public class SequencerPage : ContentPage
         _startStop.Text = _seq.IsRunning ? "■" : "▶";
         ToolTipProperties.SetText(_startStop, _seq.IsRunning ? "Stop" : "Start");
         _startStop.BackgroundColor = _seq.IsRunning ? Theme.Red : Theme.Key;
-        _gateLabel.Text = $"{_seq.GateLength * 100:0}%";
         int octave = _seq.BaseNote / 12 - 1;
         _octaveLabel.Text = $"C{octave}–C{octave + 2}";
         foreach (var refresh in _refreshers)

@@ -34,13 +34,12 @@ public class BqPage : ContentPage
 
     readonly Button _startStop = IconButton("▶", "Start");
     readonly Button _step = IconButton("STEP", "Eén stap verder (als hij stilstaat)");
-    readonly Label _dutyLabel = Text("");
     readonly Label[] _portaLabels = [Text(""), Text("")];
     readonly Grid _modes = new() { ColumnSpacing = 4, RowSpacing = 4 };
     readonly List<Button> _modeButtons = new();
     readonly Label _octaveLabel = Text("");
 
-    public BqPage(BqSequencer bq)
+    public BqPage(BqSequencer bq, MusicClock clock)
     {
         _bq = bq;
         Title = $"BQ-10 (ch{bq.Channel + 1})";
@@ -53,16 +52,16 @@ public class BqPage : ContentPage
         _bq.StepChanged += position => Dispatcher.Dispatch(() => _panel.ShowPosition(position));
         _bq.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop with the duty next to it, step and back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop, then tempo and duty (a tap opens a popup to change them), step and back to step 1
         _startStop.Clicked += (_, _) => { if (_bq.IsRunning) _bq.Stop(); else _bq.Start(); };
         _step.FontSize = 14;
         _step.FontAttributes = FontAttributes.Bold;
         _step.Clicked += (_, _) => _bq.Step();
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _bq.Reset();
-        var duty = Setting(() => (_bq.Duty - 0.1) / 0.8, v => _bq.Duty = 0.1 + v * 0.8);
-        duty.WidthRequest = 120;
-        PageHeader.Set(this, _startStop, Group(Theme.Print("DUTY"), duty, _dutyLabel), _step, reset);
+        var duty = ValueButton.Percent("DUTY", 0.1, 0.9, () => _bq.Duty, v => _bq.Duty = v);
+        duty.Done += (_, _) => _bq.Save();
+        PageHeader.Set(this, _startStop, ValueButton.Tempo(clock), duty, _step, reset);
 
         // ---- sequence mode: eight buttons of equal width, in one row (or two on a narrow screen)
         foreach (var (mode, label, name) in Modes)
@@ -148,7 +147,6 @@ public class BqPage : ContentPage
         _startStop.BackgroundColor = _bq.IsRunning ? Theme.Red : Theme.Key;
         _startStop.IsEnabled = !_bq.IsStepped;
         _step.IsEnabled = !_bq.IsRunning;
-        _dutyLabel.Text = $"{_bq.Duty * 100:0}%";
         for (int row = 0; row < 2; row++)
             _portaLabels[row].Text = $"{_bq.Portamento[row] * 100:0}%";
         _octaveLabel.Text = $"C{_bq.BaseNote / 12 - 1}";

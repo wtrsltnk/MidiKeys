@@ -3,14 +3,14 @@ using MidiKeys.Services;
 namespace MidiKeys.Controls;
 
 /// <summary>
-/// Choose the MIDI output device, with its connection status underneath. Connects to the first
-/// device by itself when nothing is connected and one gets plugged in.
+/// Choose the MIDI output device. Connected, the picker shows only the device; otherwise its title
+/// says why not (no cable, connecting, failed). Connects to the first device by itself when
+/// nothing is connected and one gets plugged in.
 /// </summary>
 public class MidiDevicePicker : VerticalStackLayout
 {
     readonly IMidiOutput _midi;
     readonly Picker _picker = new();
-    readonly Label _status = new() { FontSize = 13, TextColor = Theme.SilkMid, LineBreakMode = LineBreakMode.TailTruncation };
 
     List<MidiOutputDevice> _devices = [];
     bool _updating;
@@ -28,7 +28,6 @@ public class MidiDevicePicker : VerticalStackLayout
             TextColor = Theme.Orange,
         });
         Children.Add(_picker);
-        Children.Add(_status);
 
         _picker.SelectedIndexChanged += OnSelected;
         _midi.DevicesChanged += (_, _) => Refresh(autoConnect: true);
@@ -43,9 +42,14 @@ public class MidiDevicePicker : VerticalStackLayout
         int index = _picker.SelectedIndex;
         if (index < 0 || index >= _devices.Count) return;
 
-        _status.Text = "Verbinden…";
+        _picker.Title = "Verbinden…";
         if (!await _midi.ConnectAsync(_devices[index].Id))
-            _status.Text = "Verbinden mislukt";
+        {
+            _picker.Title = "Verbinden mislukt";
+            _updating = true;
+            _picker.SelectedIndex = -1; // show the message
+            _updating = false;
+        }
     }
 
     async void Refresh(bool autoConnect)
@@ -64,14 +68,16 @@ public class MidiDevicePicker : VerticalStackLayout
 
     void UpdateStatus()
     {
+        // Only a reason while not connected; connected, the picker shows the device and nothing else.
+        // (On Windows the picker shows its title above the list.)
         if (!_midi.IsSupported)
-            _status.Text = "Dit apparaat ondersteunt geen MIDI";
+            _picker.Title = "Dit apparaat ondersteunt geen MIDI";
         else if (_midi.IsConnected)
-            _status.Text = $"● {_midi.ConnectedDeviceName}";
+            _picker.Title = null;
         else if (_devices.Count == 0)
-            _status.Text = "Sluit een USB-MIDI-kabel aan";
+            _picker.Title = "Sluit een USB-MIDI-kabel aan";
         else
-            _status.Text = "Niet verbonden";
+            _picker.Title = "Niet verbonden";
 
         _updating = true;
         _picker.SelectedIndex = _devices.FindIndex(d => d.Id == _midi.ConnectedDeviceId);

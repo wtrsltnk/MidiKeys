@@ -27,7 +27,7 @@ public class CirklonPage : ContentPage
     readonly View _ccGroup;
     bool _follow;
 
-    public CirklonPage(CirklonSequencer ck)
+    public CirklonPage(CirklonSequencer ck, MusicClock clock)
     {
         _ck = ck;
         Title = $"CIRKLON2 (ch{ck.Channel + 1})";
@@ -49,11 +49,11 @@ public class CirklonPage : ContentPage
         });
         _ck.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop and back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop, tempo (a tap opens a popup to change it), back to step 1
         _startStop.Clicked += (_, _) => { if (_ck.IsRunning) _ck.Stop(); else _ck.Start(); };
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _ck.Reset();
-        PageHeader.Set(this, _startStop, reset);
+        PageHeader.Set(this, _startStop, ValueButton.Tempo(clock), reset);
 
         // ---- ROW: which row the screen shows and the drags edit
         for (int i = 0; i < CirklonPanel.RowNames.Length; i++)

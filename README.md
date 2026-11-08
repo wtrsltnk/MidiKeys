@@ -28,11 +28,11 @@ of the app follows the Roland TR-808: charcoal panel, off-white print and orange
 ## Getting started
 1. Plug in the USB MIDI cable and connect its **OUT** to the synth's **MIDI IN**. The app
    connects to it by itself; you can choose the device at the bottom of the side menu.
-2. Open the side menu (☰, top left), tap **+** next to **NIEUW KANAAL**, choose a MIDI
-   channel and then the kind of view.
+2. Open the side menu (☰, top left), tap **+** next to **APPARATEN**, choose the device and
+   then the MIDI channel it plays on.
 3. Set the synth (or a part of a multitimbral synth) to that channel, press ▶ in the title bar
-   and set the tempo in the side menu.
-4. Add more views on the same or other channels: they all play on one shared clock and stay
+   and tap **TEMPO** next to it to set the tempo.
+4. Add more devices on the same or other channels: they all play on one shared clock and stay
    in step, also while you switch pages or play the piano over them.
 
 ## Side menu
@@ -40,13 +40,18 @@ of the app follows the Roland TR-808: charcoal panel, off-white print and orange
 
 The hamburger menu (top left) holds:
 - **Piano**
-- A section per MIDI channel (**KANAAL 1**, **KANAAL 2**, …) listing the views on that
-  channel. The **+** next to a channel adds a view to it; a channel can have several, also of
-  the same kind (they are then numbered, e.g. *1601 SEQUENCER 2*). **NIEUW KANAAL +** picks a
-  channel without views and then the first view for it. The 🗑 behind a view removes it
-  (after asking) together with its stored settings; a channel without views disappears.
-- **TEMPO**: one tempo (30–300 BPM) for all views, which run on a shared clock and stay in step.
-- **MIDI-APPARAAT** at the bottom: choose the output, with the connection status below.
+- **APPARATEN**: the list of devices you added, sorted by channel, each with the MIDI channel
+  it plays on behind it (e.g. *1601 SEQUENCER · ch 2*). The **+** adds one: choose the device,
+  then the channel; the channel list shows what already plays on each channel. Several devices
+  can share a channel, also of the same kind (they are then numbered, e.g. *1601 SEQUENCER 2*).
+  The 🗑 behind a device removes it (after asking) together with its stored settings.
+In the title bar of every view, **TEMPO** and the gate length (GATE, PULSE WIDTH, DUTY or
+LENGTH) show as *name: value*, e.g. *TEMPO: 120 BPM*. Tap one to change it in a popup with the
+value in large type, a slider and − / +; changes apply right away, **OK** or a tap beside the
+popup closes it. There is one tempo (30–300 BPM) for all views: they run on a shared clock and
+stay in step, so changing it in one view changes it everywhere.
+- **MIDI-APPARAAT** at the bottom: choose the output. Connected, it shows just the device; when
+  nothing is connected, a short message says why (no cable, connecting, failed).
   Connects automatically as soon as you plug in the cable; disconnects cleanly when you unplug it.
 
 | View | After | Steps | Edit by |
@@ -90,8 +95,8 @@ steps fill the whole window, so the sliders are as long as possible. Each step i
   two voices on the same channel
 - **SEQUENTIAL – RANDOM**: forward or random order
 - **OCTAVE** ▼ / ▲: the slider range
-- In the title bar: ▶/■ start/stop with **PULSE WIDTH** (gate length 5–95 % of a step) next to
-  it, ⏮ back to step 1
+- In the title bar: ▶/■ start/stop, **TEMPO** and **PULSE WIDTH** (gate length 5–95 % of a
+  step), ⏮ back to step 1
 
 The three gate buses are separate gate outputs on the 1601; here they mean note, accent and
 legato because that is what is useful over MIDI.
@@ -123,7 +128,7 @@ panel, white print, black knobs and red LEDs. Each step is a sixteenth note.
 
 - **PORTAMENTO A / B**: sent as CC 5 (portamento time) and CC 65 (on/off) before the notes of
   that row; it works if your synth responds to them
-- In the title bar: ▶/■ start/stop with **DUTY** (gate length 10–90 % of a step) next to it,
+- In the title bar: ▶/■ start/stop, **TEMPO** and **DUTY** (gate length 10–90 % of a step),
   **STEP** (one step on while it is stopped), ⏮ back to step 1
 
 Unlike the hardware, A and B both play on the channel of the view (the BQ-10 sends B on the
@@ -160,7 +165,7 @@ with LEDs.
 - **TIMEBASE**: the length of a step: 1, 2, 4, 8, 16, 32, 64 and the triplets 2T–64T (default 16)
 - **BAR** ◀ / ▶ chooses the bar you see and edit; **FOLLOW** follows the bar that plays.
   **BARS** − / + sets the pattern length (1–16 bars); a new bar starts as a copy of the last one.
-- In the title bar: ▶/■ start/stop, ⏮ back to step 1
+- In the title bar: ▶/■ start/stop, **TEMPO**, ⏮ back to step 1
 
 Not taken over: song mode, scenes and the other tracks, the "hold" length, the X flag (there is
 no transpose), aux events other than CCs, the polyrhythm timebase, gang and slope edit.
@@ -182,14 +187,15 @@ of the DUO is your own synth.
 - **SPEED**: 1/4, 1/8 (default) or 1/16 notes per step
 - The two **red arrows** above the keyboard: ◀ an octave down, ▶ an octave up (C1–C7; C4 by default)
 - **RANDOM**: the steps play in random order; **BOOST**: every note at full velocity
-- In the title bar: ▶/■ start/stop (also the button in the middle of the ring) with **LENGTH**
-  (note length 5–95 % of a step) next to it, ⏮ back to step 1
+- In the title bar: ▶/■ start/stop (also the button in the middle of the ring), **TEMPO** and
+  **LENGTH** (note length 5–95 % of a step), ⏮ back to step 1
 
 ## Arp
 <img src="docs/screenshots/arp.png" alt="Arp" width="800">
 
 An arpeggiator with its own keyboard, built so every setting is visible and takes one tap.
-- In the title bar: ▶/■ start/stop and gate length. Stopped, the keyboard plays notes directly.
+- In the title bar: ▶/■ start/stop, **TEMPO** and **GATE** (gate length). Stopped, the keyboard
+  plays notes directly.
 - **MODUS**: ↑ up, ↓ down, ↕ up and down (no double top or bottom note), ✋ as played, 🎲 random
 - **OCTAVEN**: 1–4, **SNELHEID**: 1/4, 1/8, 1/16, 1/8T
 - **RITME**: 8 steps that play or rest; a LED above each step shows the one that is playing
@@ -243,11 +249,12 @@ the channel of the piano or of the views that should play it.
 | `Controls/Theme.cs` | TR-808 colours and default control styles, plus the 1601 and BQ-10 colours |
 | `Controls/KeyColors.cs` | Key colours, pressed-key colour from the velocity, light green for marked keys |
 | `Controls/PageHeader.cs` | Title bar with the page title left and its main controls right |
-| `Controls/MidiDevicePicker.cs` | MIDI device choice + connection status (side menu) |
+| `Controls/ValueButton.cs` | "TEMPO: 120 BPM" style button that opens a popup with a slider and − / + |
+| `Controls/MidiDevicePicker.cs` | MIDI device choice; a message only when nothing is connected (side menu) |
 | `Pages/SettingsPage.cs`, `Pages/CalibrationPage.cs` | Velocity settings and calibration |
 | `MainPage.xaml(.cs)` | Piano page: toolbar and wiring |
-| `AppShell.cs` | Side menu: a section per channel with its views, + / 🗑, tempo, MIDI device |
-| `Services/Instruments.cs` | The added views per channel, stored in Preferences |
+| `AppShell.cs` | Side menu: the device list with channels, + / 🗑, MIDI device |
+| `Services/Instruments.cs` | The added devices and their channels, stored in Preferences |
 | `Services/MusicClock.cs` | Shared tempo and timing thread (24 PPQN), note-off bookkeeping |
 | `Services/StepSequencer.cs`, `Controls/SequencerPanel.cs`, `Pages/SequencerPage.cs` | 1601 Sequencer: engine, drawn panel, page |
 | `Services/BqSequencer.cs`, `Controls/BqPanel.cs`, `Pages/BqPage.cs` | BQ-10: engine with the sequence modes, drawn knobs, page |

@@ -5,8 +5,8 @@ using MidiKeys.Services;
 namespace MidiKeys;
 
 /// <summary>
-/// Hamburger menu (top left): Piano, then a section per MIDI channel listing the views the user
-/// added to it (1601 sequencers, BQ-10s, Cirklon2s, DUOs and arps), with a + to add a view; below them a + for a new channel.
+/// Hamburger menu (top left): Piano, then the list of devices the user added (1601 sequencers,
+/// BQ-10s, Cirklon2s, DUOs and arps), each with the MIDI channel it plays on; + adds one.
 /// </summary>
 public class AppShell : Shell
 {
@@ -36,12 +36,12 @@ public class AppShell : Shell
 
         FlyoutBehavior = FlyoutBehavior.Flyout;
         FlyoutBackgroundColor = MenuBackground;
-        // Menu on top; the shared tempo and the MIDI device choice right at the bottom.
+        // Menu on top; the MIDI device choice right at the bottom.
         var flyout = new Grid { RowDefinitions = { new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) } };
         flyout.Add(new ScrollView { Content = _menu }, 0, 0);
         flyout.Add(new VerticalStackLayout
         {
-            Children = { Line(), TempoControl(), Line(), new MidiDevicePicker(midi) { Padding = new Thickness(20, 12, 12, 12) } },
+            Children = { Line(), new MidiDevicePicker(midi) { Padding = new Thickness(20, 12, 12, 12) } },
         }, 0, 1);
         FlyoutContent = flyout;
 
@@ -64,11 +64,11 @@ public class AppShell : Shell
     {
         Page page = instrument switch
         {
-            StepSequencer sequencer => new SequencerPage(sequencer),
-            BqSequencer bq => new BqPage(bq),
-            CirklonSequencer ck => new CirklonPage(ck),
-            DuoSequencer duo => new DuoPage(duo),
-            Arpeggiator arp => new ArpPage(arp, _velocity),
+            StepSequencer sequencer => new SequencerPage(sequencer, _clock),
+            BqSequencer bq => new BqPage(bq, _clock),
+            CirklonSequencer ck => new CirklonPage(ck, _clock),
+            DuoSequencer duo => new DuoPage(duo, _clock),
+            Arpeggiator arp => new ArpPage(arp, _velocity, _clock),
             _ => throw new ArgumentException("Unknown instrument", nameof(instrument)),
         };
         ShellItem item = new ShellContent { Content = page };
@@ -112,24 +112,21 @@ public class AppShell : Shell
             item.Title = page.Title = $"{Name(instrument)} (ch{instrument.Channel + 1})";
     }
 
-    async Task NewChannel()
+    /// <summary>+ in the menu: choose the device, then the channel it plays on.</summary>
+    async Task AddDevice()
     {
-        var free = _instruments.FreeChannels;
-        if (free.Count == 0)
+        string? choice = await DisplayActionSheetAsync("Apparaat toevoegen", "Annuleren", null, SequencerName, BqName, CirklonName, DuoName, ArpName);
+        if (choice is null or "Annuleren") return;
+
+        // Every channel can be chosen; the devices already on it are shown behind it.
+        var options = Enumerable.Range(0, 16).Select(ch =>
         {
-            await DisplayAlertAsync("Geen kanaal vrij", "Alle 16 MIDI-kanalen hebben al een view.", "OK");
-            return;
-        }
+            var on = _instruments.All.Where(i => i.Channel == ch).Select(Name).ToList();
+            return on.Count == 0 ? $"Kanaal {ch + 1}" : $"Kanaal {ch + 1} ({string.Join(", ", on)})";
+        }).ToArray();
+        int channel = Array.IndexOf(options, await DisplayActionSheetAsync($"{choice}: MIDI-kanaal", "Annuleren", null, options));
+        if (channel < 0) return;
 
-        var options = free.Select(ch => $"Kanaal {ch + 1}").ToArray();
-        int index = Array.IndexOf(options, await DisplayActionSheetAsync("MIDI-kanaal", "Annuleren", null, options));
-        if (index >= 0)
-            await AddView(free[index]);
-    }
-
-    async Task AddView(int channel)
-    {
-        string? choice = await DisplayActionSheetAsync($"View op kanaal {channel + 1}", "Annuleren", null, SequencerName, BqName, CirklonName, DuoName, ArpName);
         IInstrument? added = choice switch
         {
             SequencerName => _instruments.AddSequencer(channel),
@@ -146,33 +143,6 @@ public class AppShell : Shell
 
     // ---------------------------------------------------------------- menu
 
-    /// <summary>Tempo for all sequencers and arps.</summary>
-    View TempoControl()
-    {
-        var value = new Label { FontSize = 16, TextColor = Theme.Silk, VerticalOptions = LayoutOptions.Center };
-        var slider = new Slider { Minimum = 30, Maximum = 300, Value = _clock.Bpm };
-        slider.ValueChanged += (_, e) => _clock.Bpm = (int)Math.Round(e.NewValue);
-        slider.DragCompleted += (_, _) => _clock.Save();
-        _clock.TempoChanged += (_, _) => Dispatcher.Dispatch(() => { slider.Value = _clock.Bpm; value.Text = $"{_clock.Bpm} BPM"; });
-        value.Text = $"{_clock.Bpm} BPM";
-
-        var header = new Grid
-        {
-            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-        };
-        header.Add(new Label
-        {
-            Text = "TEMPO",
-            FontSize = 16,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = Theme.Orange,
-            VerticalOptions = LayoutOptions.Center,
-        }, 0, 0);
-        header.Add(value, 1, 0);
-
-        return new VerticalStackLayout { Padding = new Thickness(20, 12, 12, 8), Spacing = 4, Children = { header, slider } };
-    }
-
     static BoxView Line() => new() { HeightRequest = 1, Color = Theme.Line, Margin = new Thickness(12, 0) };
 
     void BuildMenu()
@@ -180,30 +150,43 @@ public class AppShell : Shell
         _menu.Children.Clear();
         _menu.Children.Add(MenuEntry("Piano", _piano));
 
-        foreach (int channel in _instruments.UsedChannels)
-        {
-            _menu.Children.Add(Header($"Kanaal {channel + 1}", () => AddView(channel)));
-            foreach (var instrument in _instruments.All.Where(i => i.Channel == channel))
-                _menu.Children.Add(MenuEntry(Name(instrument), _views[instrument].Item, () => Remove(instrument)));
-        }
-
-        _menu.Children.Add(Header("Nieuw kanaal", NewChannel));
+        _menu.Children.Add(Header("Apparaten", AddDevice));
+        foreach (var instrument in _instruments.All)
+            _menu.Children.Add(MenuEntry(Name(instrument), _views[instrument].Item, () => Remove(instrument), $"ch {instrument.Channel + 1}"));
     }
 
     /// <param name="remove">Shows a trash can that removes the entry (after asking).</param>
-    View MenuEntry(string text, ShellItem target, Action? remove = null)
+    /// <param name="detail">Shown dimmer on the right, e.g. the MIDI channel.</param>
+    View MenuEntry(string text, ShellItem target, Action? remove = null, string? detail = null)
     {
         var label = new Label { Text = text, FontSize = 16, TextColor = Theme.Silk, Padding = new Thickness(20, 12) };
-        var tap = new TapGestureRecognizer();
-        tap.Tapped += (_, _) => Go(target);
-        label.GestureRecognizers.Add(tap); // on the label only, so a tap on the trash can doesn't navigate
-
         var row = new Grid
         {
             BackgroundColor = CurrentItem == target ? Selected : Colors.Transparent,
-            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto) },
         };
         row.Add(label, 0, 0);
+        var labels = new List<View> { label };
+        if (detail is not null)
+        {
+            var channel = new Label
+            {
+                Text = detail,
+                FontSize = 15,
+                TextColor = Theme.SilkMid,
+                VerticalOptions = LayoutOptions.Center,
+                Padding = new Thickness(8, 12),
+            };
+            row.Add(channel, 1, 0);
+            labels.Add(channel);
+        }
+        foreach (var view in labels)
+        {
+            // On the labels only, so a tap on the trash can doesn't navigate
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += (_, _) => Go(target);
+            view.GestureRecognizers.Add(tap);
+        }
 
         if (remove is not null)
         {
@@ -224,7 +207,7 @@ public class AppShell : Shell
                 if (await DisplayAlertAsync("Verwijderen", $"{target.Title} en de instellingen verwijderen?", "Verwijderen", "Annuleren"))
                     remove();
             };
-            row.Add(trash, 1, 0);
+            row.Add(trash, 2, 0);
         }
         return row;
     }

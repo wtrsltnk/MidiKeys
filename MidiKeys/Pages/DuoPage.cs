@@ -17,9 +17,8 @@ public class DuoPage : ContentPage
     readonly List<Action> _refreshers = new();
 
     readonly Button _startStop = IconButton("▶", "Start");
-    readonly Label _gateLabel = Text("");
 
-    public DuoPage(DuoSequencer duo)
+    public DuoPage(DuoSequencer duo, MusicClock clock)
     {
         _duo = duo;
         Title = $"DUO (ch{duo.Channel + 1})";
@@ -35,14 +34,13 @@ public class DuoPage : ContentPage
         _duo.StepChanged += step => Dispatcher.Dispatch(() => _panel.ShowPosition(step));
         _duo.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop with the note length next to it, back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop, then tempo and note length (a tap opens a popup to change them), back to step 1
         _startStop.Clicked += (_, _) => StartStop();
-        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _duo.Gate * 100, WidthRequest = 120 };
-        gate.ValueChanged += (_, e) => { _duo.Gate = e.NewValue / 100; Refresh(); };
-        gate.DragCompleted += (_, _) => _duo.Save();
+        var gate = ValueButton.Percent("LENGTH", 0.05, 0.95, () => _duo.Gate, v => _duo.Gate = v);
+        gate.Done += (_, _) => _duo.Save();
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _duo.Reset();
-        PageHeader.Set(this, _startStop, Group(Theme.Print("LENGTH"), gate, _gateLabel), reset);
+        PageHeader.Set(this, _startStop, ValueButton.Tempo(clock), gate, reset);
 
         // ---- speed, random, boost
         var speed = new HorizontalStackLayout { Spacing = 2 };
@@ -129,7 +127,6 @@ public class DuoPage : ContentPage
         _startStop.Text = _duo.IsRunning ? "■" : "▶";
         ToolTipProperties.SetText(_startStop, _duo.IsRunning ? "Stop" : "Start");
         _startStop.BackgroundColor = _duo.IsRunning ? Theme.Red : Theme.Key;
-        _gateLabel.Text = $"{_duo.Gate * 100:0}%";
         foreach (var refresh in _refreshers)
             refresh();
         _panel.Refresh();
@@ -187,7 +184,4 @@ public class DuoPage : ContentPage
         TextColor = Theme.Silk,
         VerticalOptions = LayoutOptions.Center,
     };
-
-    static Label Text(string text) =>
-        new() { Text = text, FontSize = 16, TextColor = Theme.Silk, VerticalOptions = LayoutOptions.Center };
 }

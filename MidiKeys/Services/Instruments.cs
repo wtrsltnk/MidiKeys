@@ -11,8 +11,8 @@ public interface IInstrument
 }
 
 /// <summary>
-/// The views the user added, grouped per MIDI channel: a channel can have several sequencers,
-/// BQ-10s, Cirklon2s, DUOs and arps. The list is stored, so they come back on the next start.
+/// The devices the user added (sequencers, BQ-10s, Cirklon2s, DUOs and arps), each on a MIDI
+/// channel; several can share a channel. The list is stored, so they come back on the next start.
 /// </summary>
 public sealed class Instruments
 {
@@ -54,12 +54,6 @@ public sealed class Instruments
 
     /// <summary>Sorted by channel; within a channel in the order they were added.</summary>
     public IReadOnlyList<IInstrument> All => _all;
-
-    /// <summary>Channels (0–15) that have at least one view.</summary>
-    public IReadOnlyList<int> UsedChannels => _all.Select(i => i.Channel).Distinct().ToList();
-
-    /// <summary>Channels (0–15) without a view yet.</summary>
-    public IReadOnlyList<int> FreeChannels => Enumerable.Range(0, 16).Except(UsedChannels).ToList();
 
     public StepSequencer AddSequencer(int channel) =>
         Add(new StepSequencer(_midi, _clock, channel, FreeSlot<StepSequencer>()));
