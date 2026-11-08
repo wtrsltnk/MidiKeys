@@ -9,7 +9,7 @@ public enum ArpRate { Quarter, Eighth, Sixteenth, EighthTriplet }
 /// after another while at least one is down (or, with Hold, the last chord until Hold is switched
 /// off). An 8-step rhythm decides which steps play and which rest. Stopped, the keys play directly.
 /// </summary>
-public sealed class Arpeggiator : IClockClient
+public sealed class Arpeggiator : IClockClient, IInstrument
 {
     public const int RhythmLength = 8;
 
@@ -41,8 +41,11 @@ public sealed class Arpeggiator : IClockClient
     /// <summary>Gate length as a fraction of a step (staccato … nearly legato).</summary>
     public double GateLength { get => _gateLength; set => _gateLength = Math.Clamp(value, 0.05, 0.95); }
 
-    /// <summary>MIDI channel (0–15) this arp plays on; settings are stored per channel.</summary>
+    /// <summary>MIDI channel (0–15) this arp plays on.</summary>
     public int Channel { get; }
+
+    /// <summary>Number the settings are stored under.</summary>
+    public int Slot { get; }
 
     /// <summary>MIDI note of the leftmost key of the arp keyboard.</summary>
     public int BaseNote { get; set; } = 48;
@@ -63,9 +66,10 @@ public sealed class Arpeggiator : IClockClient
     /// <summary>Raised on the UI thread when the notes the arp plays change.</summary>
     public event EventHandler? NotesChanged;
 
-    public Arpeggiator(IMidiOutput midi, MusicClock clock, int channel)
+    public Arpeggiator(IMidiOutput midi, MusicClock clock, int channel, int slot)
     {
         Channel = channel;
+        Slot = slot;
         _midi = midi;
         _clock = clock;
         _sounding = new SoundingNotes(midi);
@@ -257,7 +261,7 @@ public sealed class Arpeggiator : IClockClient
 
     static readonly string[] Keys = ["mode", "octaves", "rate", "gate", "base", "rhythm"];
 
-    string Key(string name) => $"arp{Channel}.{name}";
+    string Key(string name) => $"arp{Slot}.{name}";
 
     /// <summary>Removes the stored settings (the arp is deleted).</summary>
     public void Forget()

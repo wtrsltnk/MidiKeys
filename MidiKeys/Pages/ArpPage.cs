@@ -21,29 +21,27 @@ public class ArpPage : ContentPage
 
     readonly Button _startStop = IconButton("▶", "Start");
     readonly Button _hold = MakeButton("HOLD");
-    readonly Label _gateLabel = Text("", 14, Theme.Silk);
     readonly Label _octaveLabel = Text("", 16, Theme.Silk);
     readonly Label _notesLabel = Text("", 14, Theme.SilkMid);
     readonly PianoKeyboard _keyboard = new() { WhiteKeyCount = 15 };
     readonly VelocitySettings _velocity;
     readonly EventHandler _velocityChanged;
 
-    public ArpPage(Arpeggiator arp, VelocitySettings velocity)
+    public ArpPage(Arpeggiator arp, VelocitySettings velocity, MusicClock clock)
     {
         _arp = arp;
         _velocity = velocity;
-        Title = $"Arp (ch{arp.Channel + 1})";
+        Title = $"ARP (ch{arp.Channel + 1})";
         BackgroundColor = Theme.Panel;
 
         _startStop.Clicked += (_, _) => { if (_arp.IsRunning) _arp.Stop(); else _arp.Start(); };
         _arp.RunningChanged += (_, _) => UpdateLabels();
 
-        // ---- in the navigation bar: start/stop and gate (the tempo is in the side menu)
-        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _arp.GateLength * 100, WidthRequest = 120 };
-        gate.ValueChanged += (_, e) => { _arp.GateLength = e.NewValue / 100; UpdateLabels(); };
-        gate.DragCompleted += (_, _) => _arp.Save();
+        // ---- in the navigation bar: start/stop, then tempo and gate (a tap opens a popup to change them)
+        var gate = ValueButton.Percent("GATE", 0.05, 0.95, () => _arp.GateLength, v => _arp.GateLength = v);
+        gate.Done += (_, _) => _arp.Save();
 
-        PageHeader.Set(this, _startStop, Group(Theme.Print("GATE"), gate, _gateLabel));
+        PageHeader.Set(this, _startStop, ValueButton.Tempo(clock), gate);
 
         // ---- the settings, one row of buttons each
         var settings = Wrap(
@@ -176,12 +174,12 @@ public class ArpPage : ContentPage
         _startStop.Text = _arp.IsRunning ? "■" : "▶";
         ToolTipProperties.SetText(_startStop, _arp.IsRunning ? "Stop" : "Start");
         _startStop.BackgroundColor = _arp.IsRunning ? Theme.Red : Theme.Key;
-        _gateLabel.Text = $"{_arp.GateLength * 100:0}%";
         int octave = _arp.BaseNote / 12 - 1;
         _octaveLabel.Text = $"C{octave}–C{octave + 2}";
         Theme.Light(_hold, _arp.Hold);
 
         var notes = _arp.Notes;
+        _keyboard.MarkedNotes = _arp.IsRunning ? notes.ToArray() : []; // the keys the arp uses light green
         _notesLabel.Text = !_arp.IsRunning ? "Gestopt: de toetsen spelen gewoon noten"
             : notes.Count == 0
             ? (_arp.Hold ? "Speel een akkoord: het blijft doorspelen" : "Houd toetsen ingedrukt om te arpeggiëren")

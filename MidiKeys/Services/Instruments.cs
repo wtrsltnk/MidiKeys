@@ -1,83 +1,137 @@
 namespace MidiKeys.Services;
 
+/// <summary>A view the user added to a MIDI channel: a 1601 sequencer, a BQ-10, a Cirklon2, a DUO or an arp.</summary>
+public interface IInstrument
+{
+    /// <summary>MIDI channel (0–15) it plays on.</summary>
+    int Channel { get; }
+
+    /// <summary>Number its settings are stored under; unique per kind of instrument.</summary>
+    int Slot { get; }
+}
+
 /// <summary>
-/// The sequencers and arps the user added, each on its own MIDI channel: a channel belongs to at
-/// most one of them. The list is stored, so they come back on the next start.
+/// The devices the user added (sequencers, BQ-10s, Cirklon2s, DUOs and arps), each on a MIDI
+/// channel; several can share a channel. The list is stored, so they come back on the next start.
 /// </summary>
 public sealed class Instruments
 {
     readonly IMidiOutput _midi;
     readonly MusicClock _clock;
-    readonly List<StepSequencer> _sequencers = new();
-    readonly List<Arpeggiator> _arps = new();
+    readonly List<IInstrument> _all = new();
 
     public Instruments(IMidiOutput midi, MusicClock clock)
     {
         _midi = midi;
         _clock = clock;
 
-        // "s0,a2": sequencer on channel 1, arp on channel 3.
+        // "s0@0,a2@0,b1@3": sequencer in slot 0 and arp in slot 2 on channel 1, BQ-10 in slot 1 on channel 4.
+        // Older lists have no "@": the slot was the channel.
         foreach (var entry in Preferences.Default.Get("instruments", "").Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            if (entry.Length < 2 || !int.TryParse(entry[1..], out int channel) || channel is < 0 or > 15 || !FreeChannels.Contains(channel))
+            var parts = entry[1..].Split('@');
+            if (!int.TryParse(parts[0], out int slot) || slot < 0)
                 continue;
-            if (entry[0] == 's') _sequencers.Add(new StepSequencer(midi, clock, channel));
-            else if (entry[0] == 'a') _arps.Add(new Arpeggiator(midi, clock, channel));
+            int channel = slot;
+            if (parts.Length > 1 && !int.TryParse(parts[1], out channel))
+                continue;
+            if (channel is < 0 or > 15)
+                continue;
+
+            if (entry[0] == 's' && !_all.OfType<StepSequencer>().Any(s => s.Slot == slot))
+                _all.Add(new StepSequencer(midi, clock, channel, slot));
+            else if (entry[0] == 'a' && !_all.OfType<Arpeggiator>().Any(a => a.Slot == slot))
+                _all.Add(new Arpeggiator(midi, clock, channel, slot));
+            else if (entry[0] == 'b' && !_all.OfType<BqSequencer>().Any(b => b.Slot == slot))
+                _all.Add(new BqSequencer(midi, clock, channel, slot));
+            else if (entry[0] == 'c' && !_all.OfType<CirklonSequencer>().Any(c => c.Slot == slot))
+                _all.Add(new CirklonSequencer(midi, clock, channel, slot));
+            else if (entry[0] == 'd' && !_all.OfType<DuoSequencer>().Any(d => d.Slot == slot))
+                _all.Add(new DuoSequencer(midi, clock, channel, slot));
         }
         Sort();
     }
 
-    /// <summary>Sorted by channel.</summary>
-    public IReadOnlyList<StepSequencer> Sequencers => _sequencers;
+    /// <summary>Sorted by channel; within a channel in the order they were added.</summary>
+    public IReadOnlyList<IInstrument> All => _all;
 
-    /// <summary>Sorted by channel.</summary>
-    public IReadOnlyList<Arpeggiator> Arps => _arps;
+    public StepSequencer AddSequencer(int channel) =>
+        Add(new StepSequencer(_midi, _clock, channel, FreeSlot<StepSequencer>()));
 
-    /// <summary>Channels (0–15) not used by a sequencer or an arp.</summary>
-    public IReadOnlyList<int> FreeChannels =>
-        Enumerable.Range(0, 16).Except(_sequencers.Select(s => s.Channel)).Except(_arps.Select(a => a.Channel)).ToList();
+    public Arpeggiator AddArp(int channel) =>
+        Add(new Arpeggiator(_midi, _clock, channel, FreeSlot<Arpeggiator>()));
 
-    public StepSequencer AddSequencer(int channel)
+    public BqSequencer AddBq(int channel) =>
+        Add(new BqSequencer(_midi, _clock, channel, FreeSlot<BqSequencer>()));
+
+    public CirklonSequencer AddCirklon(int channel) =>
+        Add(new CirklonSequencer(_midi, _clock, channel, FreeSlot<CirklonSequencer>()));
+
+    public DuoSequencer AddDuo(int channel) =>
+        Add(new DuoSequencer(_midi, _clock, channel, FreeSlot<DuoSequencer>()));
+
+    public void Remove(IInstrument instrument)
     {
-        var sequencer = new StepSequencer(_midi, _clock, channel);
-        _sequencers.Add(sequencer);
+        switch (instrument)
+        {
+            case StepSequencer sequencer:
+                sequencer.Stop();
+                sequencer.Forget();
+                break;
+            case BqSequencer bq:
+                bq.Stop();
+                bq.Forget();
+                break;
+            case CirklonSequencer ck:
+                ck.Stop();
+                ck.Forget();
+                break;
+            case DuoSequencer duo:
+                duo.Stop();
+                duo.Forget();
+                break;
+            case Arpeggiator arp:
+                arp.Stop();
+                arp.ReleaseKeys();
+                arp.Forget();
+                break;
+        }
+        _all.Remove(instrument);
+        Save();
+    }
+
+    T Add<T>(T instrument) where T : IInstrument
+    {
+        _all.Add(instrument);
         Sort();
         Save();
-        return sequencer;
+        return instrument;
     }
 
-    public Arpeggiator AddArp(int channel)
+    int FreeSlot<T>() where T : IInstrument
     {
-        var arp = new Arpeggiator(_midi, _clock, channel);
-        _arps.Add(arp);
-        Sort();
-        Save();
-        return arp;
-    }
-
-    public void Remove(StepSequencer sequencer)
-    {
-        sequencer.Stop();
-        sequencer.Forget();
-        _sequencers.Remove(sequencer);
-        Save();
-    }
-
-    public void Remove(Arpeggiator arp)
-    {
-        arp.Stop();
-        arp.ReleaseKeys();
-        arp.Forget();
-        _arps.Remove(arp);
-        Save();
+        var used = _all.OfType<T>().Select(i => i.Slot).ToHashSet();
+        int slot = 0;
+        while (used.Contains(slot)) slot++;
+        return slot;
     }
 
     void Sort()
     {
-        _sequencers.Sort((a, b) => a.Channel.CompareTo(b.Channel));
-        _arps.Sort((a, b) => a.Channel.CompareTo(b.Channel));
+        var sorted = _all.OrderBy(i => i.Channel).ToList(); // stable: keeps the order within a channel
+        _all.Clear();
+        _all.AddRange(sorted);
     }
 
     void Save() => Preferences.Default.Set("instruments",
-        string.Join(',', _sequencers.Select(s => $"s{s.Channel}").Concat(_arps.Select(a => $"a{a.Channel}"))));
+        string.Join(',', _all.Select(i => $"{Kind(i)}{i.Slot}@{i.Channel}")));
+
+    static char Kind(IInstrument instrument) => instrument switch
+    {
+        StepSequencer => 's',
+        BqSequencer => 'b',
+        CirklonSequencer => 'c',
+        DuoSequencer => 'd',
+        _ => 'a',
+    };
 }

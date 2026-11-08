@@ -10,14 +10,15 @@ public static class PageHeader
             ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
             Padding = new Thickness(8, 0),
         };
-        bar.Add(new Label
+        var title = new Label
         {
-            Text = page.Title,
             FontSize = 18,
             TextColor = Theme.Silk,
             VerticalOptions = LayoutOptions.Center,
             LineBreakMode = LineBreakMode.TailTruncation,
-        }, 0, 0);
+        };
+        title.SetBinding(Label.TextProperty, new Binding(nameof(Page.Title), source: page)); // the title can change later
+        bar.Add(title, 0, 0);
 
         var right = new HorizontalStackLayout { Spacing = 8, VerticalOptions = LayoutOptions.Center };
         foreach (var control in controls)

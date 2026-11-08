@@ -35,6 +35,9 @@ public class PianoKeyboard : View
     public static readonly BindableProperty VelocityConfigProperty =
         BindableProperty.Create(nameof(VelocityConfig), typeof(VelocityConfig), typeof(PianoKeyboard), VelocityConfig.Default);
 
+    public static readonly BindableProperty MarkedNotesProperty =
+        BindableProperty.Create(nameof(MarkedNotes), typeof(int[]), typeof(PianoKeyboard), Array.Empty<int>());
+
     /// <summary>MIDI note of the leftmost C (48 = C3, 60 = C4).</summary>
     public int BaseNote
     {
@@ -47,6 +50,13 @@ public class PianoKeyboard : View
     {
         get => (int)GetValue(WhiteKeyCountProperty);
         set => SetValue(WhiteKeyCountProperty, value);
+    }
+
+    /// <summary>Notes whose keys are shown light green (e.g. the notes the arp plays); set a new array to change them.</summary>
+    public int[] MarkedNotes
+    {
+        get => (int[])GetValue(MarkedNotesProperty);
+        set => SetValue(MarkedNotesProperty, value);
     }
 
     public VelocityConfig VelocityConfig

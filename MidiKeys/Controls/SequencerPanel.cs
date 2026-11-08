@@ -3,30 +3,34 @@ using MidiKeys.Services;
 namespace MidiKeys.Controls;
 
 /// <summary>
-/// Hardware-style step panel (TR-808 colours): per step a LED, a pitch slider, three gate-bus switches and a
-/// play/skip/reset switch, all drawn in one GraphicsView so it looks the same on every platform.
+/// Step panel in the style of the Behringer 1601: black with orange lines, per step a gate-assign
+/// slide switch on the three gate buses, the step number and a slider with a lit cap. It fills the
+/// space it gets. The current step is drawn on a separate, cheap layer (<see cref="Lights"/>), so the
+/// panel itself only redraws when something changes.
 /// </summary>
 public class SequencerPanel : GraphicsView, IDrawable
 {
     static readonly string[] NoteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    static readonly string[] RowLabels = ["GATE", "ACCENT", "LEGATO", "MODE"];
+    static readonly (string Bus, string Meaning)[] BusLabels = [("GATE BUS 1", "NOTE"), ("GATE BUS 2", "ACCENT"), ("GATE BUS 3", "LEGATO")];
 
-    static readonly Color Panel = Theme.Panel;
-    static readonly Color Silk = Theme.Silk;                       // panel print
-    static readonly Color SilkDim = Theme.SilkDim;
-    static readonly Color Track = Color.FromArgb("#0C0C0C");
-    static readonly Color Cap = Theme.Cap;
-    static readonly Color CapLine = Theme.Orange;
-    static readonly Color LedOn = Theme.LedOn;
-    static readonly Color LedOff = Theme.LedOff;
-    static readonly Color SwitchOff = Theme.Key;
-    static readonly Color[] SwitchOn = [Theme.Red, Theme.Orange, Theme.Yellow];
-
-    enum Part { None, Slider, Gate, Accent, Legato, Mode }
+    static readonly Color Panel = Theme.Panel1601;
+    static readonly Color Orange = Theme.Orange1601;
+    static readonly Color Print = Theme.Silk;
+    static readonly Color PrintDim = Theme.SilkDim;
+    static readonly Color Body = Color.FromArgb("#1A1A1A");
+    static readonly Color BodyEdge = Color.FromArgb("#3C3C3C");
+    static readonly Color Knob = Color.FromArgb("#4A4A4A");
+    static readonly Color Ridge = Color.FromArgb("#909090");
+    static readonly Color CapWhite = Color.FromArgb("#F4F6FF");
+    static readonly Color CapBlue = Color.FromArgb("#3D86FF");
+    static readonly Color CapOff = Color.FromArgb("#3A3A3A");
 
     readonly StepSequencer _sequencer;
     int[] _positions = [-1, -1];
     int _dragColumn = -1;
+
+    /// <summary>Layer on top of the panel that lights the cap of the current step(s); add it in the same cell.</summary>
+    public GraphicsView Lights { get; }
 
     /// <summary>Raised when the user changed a step (to save the pattern).</summary>
     public event EventHandler? PatternChanged;
@@ -35,6 +39,7 @@ public class SequencerPanel : GraphicsView, IDrawable
     {
         _sequencer = sequencer;
         Drawable = this;
+        Lights = new GraphicsView { Drawable = new LightsLayer(this), InputTransparent = true };
         StartInteraction += (_, e) => OnPress(e.Touches[0]);
         DragInteraction += (_, e) => OnDrag(e.Touches[0]);
         EndInteraction += (_, _) => OnRelease();
@@ -43,72 +48,95 @@ public class SequencerPanel : GraphicsView, IDrawable
     public void ShowPositions(int[] positions)
     {
         _positions = positions;
+        Lights.Invalidate();
+    }
+
+    /// <summary>Redraws the panel and the lights (after a change that is not a step).</summary>
+    public void Refresh()
+    {
         Invalidate();
+        Lights.Invalidate();
     }
 
-    // ---------------------------------------------------------------- geometry
+    // ---------------------------------------------------------------- geometry (pixels)
 
-    // Everything scales with the row height, so the panel fits a phone in landscape as well as a desktop window.
-    float RowH => Math.Clamp((float)Height / 11f, 16f, 28f);
-    float LabelW => RowH * 2.8f;
-    float ColW => ((float)Width - LabelW) / StepSequencer.StepCount;
-    float SliderTop => RowH * 2.1f;
-    float SliderBottom => (float)Height - RowH * 5.6f;
-    float ColX(int i) => LabelW + i * ColW;
-    float RowY(int row) => SliderBottom + RowH * (1.3f + row * 1.05f); // row 0..3: gate, accent, legato, mode
+    // Top to bottom: gate-assign switches, step numbers, sliders, note names. Columns fill the width,
+    // with half a column between the A and B halves; the sliders take the height that is left.
+    float W => (float)Width;
+    float H => (float)Height;
+    float LabelW => Math.Clamp(W * 0.08f, 64f, 116f);
+    float ColW => (W - LabelW - 8) / 16.5f;
+    float ColX(int i) => LabelW + (i + 0.5f + (i >= 8 ? 0.5f : 0)) * ColW;
+    const float Top = 10;
+    float AssignH => Math.Clamp(H * 0.26f, 66f, 150f);
+    float BusY(int bus) => Top + AssignH * (1 + 2 * bus) / 6f;
+    float NumberTop => Top + AssignH + 12;
+    float NumberH => Math.Clamp(H * 0.075f, 30f, 46f);
+    float NoteH => Math.Clamp(H * 0.05f, 18f, 26f);
+    float SlotTop => NumberTop + NumberH + 8;
+    float SlotBottom => H - NoteH - 8;
+    float CapH => Math.Clamp((SlotBottom - SlotTop) / 10f, 18f, 36f);
+    float CapW => Math.Min(ColW * 0.55f, 36f);
+    float CapLow => SlotBottom - CapH / 2;
+    float CapHigh => SlotTop + CapH / 2;
+    float PitchY(int pitch) => CapLow - pitch / (float)StepSequencer.PitchRange * (CapLow - CapHigh);
 
-    (int Column, Part Part) HitTest(PointF p)
+    int ColumnAt(float x)
     {
-        if (p.X < LabelW || ColW <= 0) return (-1, Part.None);
-        int col = Math.Clamp((int)((p.X - LabelW) / ColW), 0, StepSequencer.StepCount - 1);
-
-        if (p.Y >= SliderTop - RowH * 0.6f && p.Y <= SliderBottom + RowH * 0.6f)
-            return (col, Part.Slider);
-        for (int row = 0; row < 4; row++)
-            if (p.Y >= RowY(row) - 2 && p.Y <= RowY(row) + RowH * 0.85f + 2)
-                return (col, (Part)((int)Part.Gate + row));
-        return (col, Part.None);
+        for (int i = 0; i < StepSequencer.StepCount; i++)
+            if (Math.Abs(x - ColX(i)) <= ColW / 2)
+                return i;
+        return -1;
     }
 
-    int PitchAt(float y)
-    {
-        double t = (SliderBottom - y) / (SliderBottom - SliderTop);
-        return Math.Clamp((int)Math.Round(t * StepSequencer.PitchRange), 0, StepSequencer.PitchRange);
-    }
+    int PitchAt(float y) =>
+        Math.Clamp((int)Math.Round((CapLow - y) / (CapLow - CapHigh) * StepSequencer.PitchRange), 0, StepSequencer.PitchRange);
+
+    /// <summary>Gate bus 1 = a note, 2 = an accented note, 3 = a legato note.</summary>
+    static int BusOf(SequencerStep step) => step.Legato ? 2 : step.Accent ? 1 : 0;
 
     // ---------------------------------------------------------------- input
 
     void OnPress(PointF p)
     {
-        var (col, part) = HitTest(p);
-        if (col < 0) return;
+        int col = ColumnAt(p.X);
+        if (col < 0 || SlotBottom <= SlotTop) return;
         var step = _sequencer.Steps[col];
 
-        switch (part)
+        if (p.Y < NumberTop - 6)
         {
-            case Part.Slider:
-                _dragColumn = col;
-                step.Pitch = PitchAt(p.Y);
-                break;
-            case Part.Gate: step.Gate = !step.Gate; break;
-            case Part.Accent: step.Accent = !step.Accent; break;
-            case Part.Legato: step.Legato = !step.Legato; break;
-            case Part.Mode: step.Mode = (StepMode)(((int)step.Mode + 1) % 3); break;
-            default: return;
+            // Gate assign: the bus line nearest to the tap.
+            int bus = Math.Clamp((int)Math.Round((p.Y - BusY(0)) / (BusY(1) - BusY(0))), 0, 2);
+            step.Accent = bus == 1;
+            step.Legato = bus == 2;
         }
-        Invalidate();
-        if (part != Part.Slider)
-            PatternChanged?.Invoke(this, EventArgs.Empty);
+        else if (p.Y < SlotTop - 4)
+        {
+            // Step number: play → rest → skip → reset → play
+            if (step.Mode == StepMode.Play && step.Gate) step.Gate = false;
+            else if (step.Mode == StepMode.Play) { step.Gate = true; step.Mode = StepMode.Skip; }
+            else if (step.Mode == StepMode.Skip) step.Mode = StepMode.Reset;
+            else step.Mode = StepMode.Play;
+        }
+        else
+        {
+            _dragColumn = col;
+            step.Pitch = PitchAt(p.Y);
+            Refresh();
+            return;
+        }
+        Refresh();
+        PatternChanged?.Invoke(this, EventArgs.Empty);
     }
 
     void OnDrag(PointF p)
     {
         if (_dragColumn < 0) return;
-        int pitch = PitchAt(p.Y);
         var step = _sequencer.Steps[_dragColumn];
+        int pitch = PitchAt(p.Y);
         if (step.Pitch == pitch) return;
         step.Pitch = pitch;
-        Invalidate();
+        Refresh();
     }
 
     void OnRelease()
@@ -122,98 +150,136 @@ public class SequencerPanel : GraphicsView, IDrawable
 
     public void Draw(ICanvas canvas, RectF dirty)
     {
-        float w = (float)Width, h = (float)Height, rh = RowH;
-        if (w <= 0 || h <= 0 || SliderBottom <= SliderTop) return;
-
+        if (W <= 0 || H <= 0 || SlotBottom <= SlotTop) return;
         canvas.FillColor = Panel;
-        canvas.FillRoundedRectangle(0, 0, w, h, 8);
+        canvas.FillRectangle(0, 0, W, H);
+        canvas.StrokeColor = Orange;
+        canvas.StrokeSize = 2;
+        canvas.DrawRoundedRectangle(1, 1, W - 2, H - 2, 10);
 
-        float small = rh * 0.42f;
-        canvas.FontSize = small;
+        DrawLabels(canvas);
 
-        // Left-hand labels
-        canvas.FontColor = Silk;
-        canvas.DrawString("STEP", 0, rh * 0.9f, LabelW - 6, small * 1.4f, HorizontalAlignment.Right, VerticalAlignment.Center);
-        canvas.DrawString("PITCH", 0, (SliderTop + SliderBottom) / 2 - small, LabelW - 6, small * 2, HorizontalAlignment.Right, VerticalAlignment.Center);
-        for (int row = 0; row < 4; row++)
-            canvas.DrawString(RowLabels[row], 0, RowY(row), LabelW - 6, rh * 0.85f, HorizontalAlignment.Right, VerticalAlignment.Center);
+        // The three gate buses run along all steps; every step's switch picks one.
+        canvas.StrokeColor = Orange;
+        canvas.StrokeSize = 2.5f;
+        for (int bus = 0; bus < 3; bus++)
+            canvas.DrawLine(LabelW - 6, BusY(bus), W - 8, BusY(bus));
 
-        // Octave lines across the slider area
-        canvas.StrokeColor = SilkDim;
-        canvas.StrokeSize = 1;
-        for (int oct = 0; oct <= 2; oct++)
+        // Scale lines across the sliders: every half octave, brighter on the octaves
+        canvas.StrokeSize = 1.5f;
+        for (int pitch = 0; pitch <= StepSequencer.PitchRange; pitch += 6)
         {
-            float y = SliderBottom - oct * 12f / StepSequencer.PitchRange * (SliderBottom - SliderTop);
-            canvas.DrawLine(LabelW, y, w - 4, y);
+            canvas.StrokeColor = pitch % 12 == 0 ? Print : PrintDim;
+            canvas.DrawLine(LabelW - 6, PitchY(pitch), W - 8, PitchY(pitch));
         }
 
         bool split = _sequencer.Split;
         if (split)
         {
-            canvas.StrokeColor = Silk;
+            float x = (ColX(7) + ColX(8)) / 2;
+            canvas.StrokeColor = Orange;
             canvas.StrokeSize = 2;
-            canvas.DrawLine(ColX(8), 4, ColX(8), h - 4);
+            canvas.DrawLine(x, Top, x, H - 8);
         }
 
         for (int i = 0; i < StepSequencer.StepCount; i++)
             DrawStep(canvas, i, split);
     }
 
+    void DrawLabels(ICanvas canvas)
+    {
+        float x = 10, w = LabelW - 18;
+        float small = Math.Clamp(AssignH / 9f, 10f, 13f);
+        canvas.FontColor = Print;
+        for (int bus = 0; bus < 3; bus++)
+        {
+            var (name, meaning) = BusLabels[bus];
+            canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            canvas.FontSize = small * 0.85f;
+            canvas.FontColor = PrintDim;
+            canvas.DrawString(name, x, BusY(bus) - small * 1.3f, w, small * 1.2f, HorizontalAlignment.Left, VerticalAlignment.Bottom);
+            canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+            canvas.FontSize = small;
+            canvas.FontColor = Print;
+            canvas.DrawString(meaning, x, BusY(bus) + 1, w, small * 1.3f, HorizontalAlignment.Left, VerticalAlignment.Top);
+        }
+
+        canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+        canvas.FontSize = 13;
+        canvas.DrawString("STEP", x, NumberTop, w, NumberH, HorizontalAlignment.Left, VerticalAlignment.Center);
+        canvas.DrawString("PITCH", x, SlotTop, w, 20, HorizontalAlignment.Left, VerticalAlignment.Center);
+        canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+        canvas.FontSize = 12;
+        for (int oct = 0; oct <= 2; oct++)
+            canvas.DrawString(oct == 0 ? "0" : $"+{oct}", x, PitchY(12 * oct) - 16, w - 4, 14, HorizontalAlignment.Right, VerticalAlignment.Bottom);
+    }
+
     void DrawStep(ICanvas canvas, int i, bool split)
     {
         var step = _sequencer.Steps[i];
-        float rh = RowH, cw = ColW, x = ColX(i), cx = x + cw / 2;
-        bool current = _positions[0] == i || _positions[1] == i;
-        bool skipped = step.Mode == StepMode.Skip;
+        float cx = ColX(i);
+        bool sounds = step.Gate && step.Mode != StepMode.Skip;
 
-        // LED + step number (in 2×8 mode: A1–A8 / B1–B8)
-        float r = rh * 0.24f;
-        canvas.FillColor = current ? LedOn : LedOff;
-        canvas.FillCircle(cx, rh * 0.45f, r);
-        // 808-style colour strip behind the number: red, orange, yellow, cream per group of four
-        float stripW = cw * 0.8f, stripH = rh * 0.6f;
-        canvas.FillColor = skipped ? SwitchOff : Theme.StepColor(i);
-        canvas.FillRoundedRectangle(cx - stripW / 2, rh * 0.9f, stripW, stripH, 2);
-        canvas.FontColor = skipped ? SilkDim : Theme.Ink;
-        string number = split ? $"{(i < 8 ? 'A' : 'B')}{i % 8 + 1}" : $"{i + 1}";
-        canvas.DrawString(number, x, rh * 0.9f, cw, stripH, HorizontalAlignment.Center, VerticalAlignment.Center);
+        // Gate-assign slide switch with a ridged knob on the chosen bus
+        float bw = Math.Min(ColW * 0.42f, 30f);
+        canvas.FillColor = Body;
+        canvas.FillRoundedRectangle(cx - bw / 2, Top, bw, AssignH, 3);
+        canvas.StrokeColor = BodyEdge;
+        canvas.StrokeSize = 1;
+        canvas.DrawRoundedRectangle(cx - bw / 2, Top, bw, AssignH, 3);
+        float ky = BusY(BusOf(step)), kh = AssignH / 3f - 6;
+        canvas.FillColor = Knob;
+        canvas.FillRoundedRectangle(cx - bw / 2 + 2, ky - kh / 2, bw - 4, kh, 2);
+        canvas.StrokeColor = Ridge;
+        for (int r = -1; r <= 1; r++)
+            canvas.DrawLine(cx - bw / 2 + 5, ky + r * kh / 4, cx + bw / 2 - 5, ky + r * kh / 4);
 
-        // Slider: track + cap
-        float trackW = Math.Max(4, cw * 0.1f);
-        canvas.FillColor = Track;
-        canvas.FillRoundedRectangle(cx - trackW / 2, SliderTop - 4, trackW, SliderBottom - SliderTop + 8, trackW / 2);
-
-        float y = SliderBottom - step.Pitch / (float)StepSequencer.PitchRange * (SliderBottom - SliderTop);
-        float capW = cw * 0.62f, capH = Math.Max(12, rh * 0.75f);
-        canvas.FillColor = skipped ? SilkDim : Cap;
-        canvas.FillRoundedRectangle(cx - capW / 2, y - capH / 2, capW, capH, 2);
-        canvas.StrokeColor = CapLine;
-        canvas.StrokeSize = 2;
-        canvas.DrawLine(cx - capW / 2 + 2, y, cx + capW / 2 - 2, y);
-
-        // Note name under the slider
-        int note = _sequencer.BaseNote + step.Pitch;
-        canvas.FontColor = step.Gate && !skipped ? Silk : SilkDim;
-        canvas.DrawString(note <= 127 ? $"{NoteNames[note % 12]}{note / 12 - 1}" : "–",
-            x, SliderBottom + rh * 0.35f, cw, rh * 0.8f, HorizontalAlignment.Center, VerticalAlignment.Center);
-
-        // Gate-bus switches
-        bool[] buses = [step.Gate, step.Accent, step.Legato];
-        float sw = Math.Min(cw * 0.7f, rh * 1.4f), sh = rh * 0.85f;
-        for (int row = 0; row < 3; row++)
+        // Step number, or what the step does instead of playing
+        bool numbered = step.Mode == StepMode.Play && step.Gate;
+        string label = step.Mode switch
         {
-            canvas.FillColor = buses[row] ? SwitchOn[row] : SwitchOff;
-            canvas.FillRoundedRectangle(cx - sw / 2, RowY(row), sw, sh, 3);
-        }
+            StepMode.Skip => "SKIP",
+            StepMode.Reset => "RESET",
+            _ when !step.Gate => "REST",
+            _ => split ? $"{(i < 8 ? 'A' : 'B')}{i % 8 + 1}" : $"{i + 1}",
+        };
+        canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+        canvas.FontSize = numbered ? Math.Min(NumberH * 0.5f, ColW * 0.4f) : Math.Min(NumberH * 0.36f, ColW * 0.22f);
+        canvas.FontColor = numbered ? Print : Orange;
+        canvas.DrawString(label, cx - ColW / 2, NumberTop, ColW, NumberH, HorizontalAlignment.Center, VerticalAlignment.Center);
 
-        // Mode switch
-        float my = RowY(3);
-        canvas.FillColor = step.Mode == StepMode.Play ? SwitchOff : Theme.Line;
-        canvas.FillRoundedRectangle(cx - sw / 2, my, sw, sh, 3);
-        canvas.FontColor = step.Mode == StepMode.Reset ? LedOn : Silk;
-        canvas.FontSize = rh * 0.36f;
-        string mode = step.Mode switch { StepMode.Skip => "SKIP", StepMode.Reset => "RST", _ => "▶" };
-        canvas.DrawString(mode, cx - sw / 2, my, sw, sh, HorizontalAlignment.Center, VerticalAlignment.Center);
-        canvas.FontSize = rh * 0.42f;
+        // Slider slot and cap
+        float sw = Math.Max(6, ColW * 0.14f);
+        canvas.FillColor = Colors.Black;
+        canvas.FillRoundedRectangle(cx - sw / 2, SlotTop, sw, SlotBottom - SlotTop, sw / 2);
+        DrawCap(canvas, cx, PitchY(step.Pitch), sounds ? CapWhite : CapOff);
+
+        int note = _sequencer.BaseNote + step.Pitch;
+        canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+        canvas.FontSize = Math.Min(NoteH * 0.62f, ColW * 0.3f);
+        canvas.FontColor = sounds ? Print : PrintDim;
+        canvas.DrawString(note <= 127 ? $"{NoteNames[note % 12]}{note / 12 - 1}" : "–",
+            cx - ColW / 2, SlotBottom + 4, ColW, NoteH, HorizontalAlignment.Center, VerticalAlignment.Center);
+    }
+
+    void DrawCap(ICanvas canvas, float cx, float cy, Color light)
+    {
+        canvas.FillColor = light;
+        canvas.FillRoundedRectangle(cx - CapW / 2, cy - CapH / 2, CapW, CapH, 3);
+        canvas.StrokeColor = Colors.Black;
+        canvas.StrokeSize = 2;
+        canvas.DrawLine(cx - CapW / 2 + 2, cy, cx + CapW / 2 - 2, cy);
+    }
+
+    /// <summary>Only the blue cap of the current step(s): a few shapes, cheap enough to redraw every step.</summary>
+    sealed class LightsLayer(SequencerPanel panel) : IDrawable
+    {
+        public void Draw(ICanvas canvas, RectF dirty)
+        {
+            if (panel.W <= 0 || panel.SlotBottom <= panel.SlotTop) return;
+            foreach (int i in panel._positions)
+                if (i >= 0)
+                    panel.DrawCap(canvas, panel.ColX(i), panel.PitchY(panel._sequencer.Steps[i].Pitch), CapBlue);
+        }
     }
 }

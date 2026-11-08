@@ -29,7 +29,7 @@ public sealed class SequencerStep
 /// two independent 8-step sequences (two voices on that channel), three gate buses, skip/reset per step and
 /// an optional random order. Steps are sixteenth notes on the shared <see cref="MusicClock"/>.
 /// </summary>
-public sealed class StepSequencer : IClockClient, IDisposable
+public sealed class StepSequencer : IClockClient, IInstrument, IDisposable
 {
     public const int StepCount = 16;
     public const int PitchRange = 24;
@@ -59,8 +59,11 @@ public sealed class StepSequencer : IClockClient, IDisposable
     /// <summary>MIDI note of a slider at the bottom.</summary>
     public int BaseNote { get; set; } = 48;
 
-    /// <summary>MIDI channel (0–15) this sequencer plays on; settings are stored per channel.</summary>
+    /// <summary>MIDI channel (0–15) this sequencer plays on.</summary>
     public int Channel { get; }
+
+    /// <summary>Number the settings are stored under.</summary>
+    public int Slot { get; }
 
     public bool IsRunning => _running;
 
@@ -70,9 +73,10 @@ public sealed class StepSequencer : IClockClient, IDisposable
     /// <summary>Raised on the thread that called Start/Stop.</summary>
     public event EventHandler? RunningChanged;
 
-    public StepSequencer(IMidiOutput midi, MusicClock clock, int channel)
+    public StepSequencer(IMidiOutput midi, MusicClock clock, int channel, int slot)
     {
         Channel = channel;
+        Slot = slot;
         _clock = clock;
         _sounding = new SoundingNotes(midi);
         Load();
@@ -181,7 +185,7 @@ public sealed class StepSequencer : IClockClient, IDisposable
 
     static readonly string[] Keys = ["steps", "gate", "split", "random", "base"];
 
-    string Key(string name) => $"seq{Channel}.{name}";
+    string Key(string name) => $"seq{Slot}.{name}";
 
     /// <summary>Removes the stored settings (the sequencer is deleted).</summary>
     public void Forget()

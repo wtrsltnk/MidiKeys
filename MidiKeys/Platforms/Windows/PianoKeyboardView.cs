@@ -41,6 +41,9 @@ public class PianoKeyboardView : Canvas
     readonly SolidColorBrush _blackBrush = Brush(KeyColors.Black);
     readonly SolidColorBrush _borderBrush = Brush(KeyColors.Border);
     readonly SolidColorBrush _textBrush = Brush(KeyColors.Text);
+    readonly SolidColorBrush _markedWhiteBrush = Brush(KeyColors.MarkedWhite);
+    readonly SolidColorBrush _markedBlackBrush = Brush(KeyColors.MarkedBlack);
+    HashSet<int> _marked = new();
 
     VelocityConfig _config = VelocityConfig.Default;
     int _baseNote = 48;
@@ -91,6 +94,19 @@ public class PianoKeyboardView : Canvas
             ReleaseAll();
             _whiteKeyCount = value;
             Rebuild();
+        }
+    }
+
+    /// <summary>Notes drawn light green; a pressed key still shows its velocity colour.</summary>
+    public int[] MarkedNotes
+    {
+        get => _marked.ToArray();
+        set
+        {
+            var marked = new HashSet<int>(value ?? []);
+            if (marked.SetEquals(_marked)) return;
+            _marked = marked;
+            UpdateFills();
         }
     }
 
@@ -210,6 +226,10 @@ public class PianoKeyboardView : Canvas
             {
                 var (r, g, b) = KeyColors.Pressed(black, velocity);
                 shape.Fill = Brush(r, g, b);
+            }
+            else if (_marked.Contains(note))
+            {
+                shape.Fill = black ? _markedBlackBrush : _markedWhiteBrush;
             }
             else
             {
