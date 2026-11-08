@@ -1,6 +1,6 @@
 namespace MidiKeys.Services;
 
-/// <summary>A view the user added to a MIDI channel: a 1601 sequencer, a BQ-10, a Cirklon2 or an arp.</summary>
+/// <summary>A view the user added to a MIDI channel: a 1601 sequencer, a BQ-10, a Cirklon2, a DUO or an arp.</summary>
 public interface IInstrument
 {
     /// <summary>MIDI channel (0–15) it plays on.</summary>
@@ -12,7 +12,7 @@ public interface IInstrument
 
 /// <summary>
 /// The views the user added, grouped per MIDI channel: a channel can have several sequencers,
-/// BQ-10s, Cirklon2s and arps. The list is stored, so they come back on the next start.
+/// BQ-10s, Cirklon2s, DUOs and arps. The list is stored, so they come back on the next start.
 /// </summary>
 public sealed class Instruments
 {
@@ -46,6 +46,8 @@ public sealed class Instruments
                 _all.Add(new BqSequencer(midi, clock, channel, slot));
             else if (entry[0] == 'c' && !_all.OfType<CirklonSequencer>().Any(c => c.Slot == slot))
                 _all.Add(new CirklonSequencer(midi, clock, channel, slot));
+            else if (entry[0] == 'd' && !_all.OfType<DuoSequencer>().Any(d => d.Slot == slot))
+                _all.Add(new DuoSequencer(midi, clock, channel, slot));
         }
         Sort();
     }
@@ -71,6 +73,9 @@ public sealed class Instruments
     public CirklonSequencer AddCirklon(int channel) =>
         Add(new CirklonSequencer(_midi, _clock, channel, FreeSlot<CirklonSequencer>()));
 
+    public DuoSequencer AddDuo(int channel) =>
+        Add(new DuoSequencer(_midi, _clock, channel, FreeSlot<DuoSequencer>()));
+
     public void Remove(IInstrument instrument)
     {
         switch (instrument)
@@ -86,6 +91,10 @@ public sealed class Instruments
             case CirklonSequencer ck:
                 ck.Stop();
                 ck.Forget();
+                break;
+            case DuoSequencer duo:
+                duo.Stop();
+                duo.Forget();
                 break;
             case Arpeggiator arp:
                 arp.Stop();
@@ -128,6 +137,7 @@ public sealed class Instruments
         StepSequencer => 's',
         BqSequencer => 'b',
         CirklonSequencer => 'c',
+        DuoSequencer => 'd',
         _ => 'a',
     };
 }

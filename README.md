@@ -3,7 +3,7 @@
 A .NET MAUI app (Android and Windows) with a multitouch piano keyboard, step sequencers and an
 arpeggiator that send MIDI over a class-compliant USB MIDI cable (e.g. CME C2MIDI Pro) to a
 synth with 5-pin DIN. Per MIDI channel you add views: a **1601 SEQUENCER**, a **BQ-10**, a
-**CIRKLON2** or an **ARP**. Each sequencer takes the look of the hardware it is named after,
+**CIRKLON2**, a **DUO** or an **ARP**. Each sequencer takes the look of the hardware it is named after,
 but with large controls that fill the screen, so it stays easy to use on a tablet. The rest
 of the app follows the Roland TR-808: charcoal panel, off-white print and orange accents.
 
@@ -18,6 +18,7 @@ of the app follows the Roland TR-808: charcoal panel, off-white print and orange
 - [1601 Sequencer](#1601-sequencer)
 - [BQ-10](#bq-10)
 - [Cirklon2](#cirklon2)
+- [DUO](#duo)
 - [Arp](#arp)
 - [Build & run](#build--run)
 - [Connecting](#connecting)
@@ -53,6 +54,7 @@ The hamburger menu (top left) holds:
 | 1601 SEQUENCER | Behringer 1601 / ARP 1601 | 16, or 2 × 8 | sliders, gate-assign switches |
 | BQ-10 | Behringer BQ-10 / Korg SQ-10 | 3 rows × 8 | knobs, sequence mode |
 | CIRKLON2 | Sequentix Cirklon2, one track with a P3 pattern | 1–16 bars × 16 | row view bars, step keys |
+| DUO | the sequencer side of the Dato DUO | 8 in a ring | step buttons, pentatonic keys |
 | ARP | – | 8-step rhythm | buttons and its own keyboard |
 
 Views, their channels, patterns and settings are saved and come back on the next start.
@@ -162,6 +164,25 @@ with LEDs.
 Not taken over: song mode, scenes and the other tracks, the "hold" length, the X flag (there is
 no transpose), aux events other than CCs, the polyrhythm timebase, gang and slope edit.
 
+## DUO
+The round sequencer of the Dato DUO, the synth for two players: a light body with a ring of 8
+big round step buttons around a start/stop button, and a two-octave pentatonic keyboard of
+round coloured keys (upper octave on the top row, in lighter shades) with two red arrow
+buttons for the octave. Every note comes from
+the pentatonic scale, so whatever you enter sounds good; easy for children too. The synth side
+of the DUO is your own synth.
+- **Step buttons**: tap to switch a step on or off; it shows the colour and name of its note
+  (an off step keeps a small dot of its colour). A red LED on the ring shows the step that plays.
+- **Keys**: stopped, a key sets the note of the chosen step (the dark ring), plays it so you
+  hear it, and moves on to the next step, so you tap in a melody note by note. Running, a key
+  records into the step that plays.
+- **SPEED**: 1/4, 1/8 (default) or 1/16 notes per step
+- The two **red arrow buttons** beside the keyboard: ▲ an octave up, ▼ an octave down
+- **TRANSPOSE** ▼ / ▲: moves the whole scale a semitone at a time (C4 by default)
+- **RANDOM**: the steps play in random order; **BOOST**: every note at full velocity
+- **GATE**: note length 5–95 % of a step
+- In the title bar (or the button in the middle of the ring): ▶/■ start/stop, ⏮ back to step 1
+
 ## Arp
 <img src="docs/screenshots/arp.png" alt="Arp" width="800">
 
@@ -229,6 +250,7 @@ the channel of the piano or of the views that should play it.
 | `Services/StepSequencer.cs`, `Controls/SequencerPanel.cs`, `Pages/SequencerPage.cs` | 1601 Sequencer: engine, drawn panel, page |
 | `Services/BqSequencer.cs`, `Controls/BqPanel.cs`, `Pages/BqPage.cs` | BQ-10: engine with the sequence modes, drawn knobs, page |
 | `Services/CirklonSequencer.cs`, `Controls/CirklonPanel.cs`, `Pages/CirklonPage.cs` | Cirklon2: P3 pattern engine, screen + step keys, page |
+| `Services/DuoSequencer.cs`, `Controls/DuoPanel.cs`, `Pages/DuoPage.cs` | DUO: 8-step pentatonic engine, ring and keys, page |
 | `Services/Arpeggiator.cs`, `Pages/ArpPage.cs` | Arp: engine with held/latched notes and rhythm, page with its own keyboard |
 
 ## How it works
@@ -242,7 +264,7 @@ vibration would otherwise show up in the measurement.
 
 ### Timing
 All views run on one clock thread (`MusicClock`) with a `Stopwatch`, independent of the UI,
-at 24 ticks per quarter note: a 1601 or BQ-10 step is 6 ticks, an arp step 24 / 12 / 8 / 6
+at 24 ticks per quarter note: a 1601 or BQ-10 step is 6 ticks, a DUO step 24 / 12 / 6, an arp step 24 / 12 / 8 / 6
 ticks depending on its rate. The Cirklon2 counts in half ticks, so its 64th timebase (1.5
 ticks) also fits; its delayed notes wait in a queue on the same thread. The thread only runs
 while something plays; whatever joins a running clock falls in on its grid. It sleeps in 1 ms

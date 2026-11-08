@@ -6,13 +6,14 @@ namespace MidiKeys;
 
 /// <summary>
 /// Hamburger menu (top left): Piano, then a section per MIDI channel listing the views the user
-/// added to it (1601 sequencers, BQ-10s, Cirklon2s and arps), with a + to add a view; below them a + for a new channel.
+/// added to it (1601 sequencers, BQ-10s, Cirklon2s, DUOs and arps), with a + to add a view; below them a + for a new channel.
 /// </summary>
 public class AppShell : Shell
 {
     const string SequencerName = "1601 SEQUENCER";
     const string BqName = "BQ-10";
     const string CirklonName = "CIRKLON2";
+    const string DuoName = "DUO";
     const string ArpName = "ARP";
 
     static readonly Color MenuBackground = Theme.PanelDark;
@@ -66,6 +67,7 @@ public class AppShell : Shell
             StepSequencer sequencer => new SequencerPage(sequencer),
             BqSequencer bq => new BqPage(bq),
             CirklonSequencer ck => new CirklonPage(ck),
+            DuoSequencer duo => new DuoPage(duo),
             Arpeggiator arp => new ArpPage(arp, _velocity),
             _ => throw new ArgumentException("Unknown instrument", nameof(instrument)),
         };
@@ -99,7 +101,7 @@ public class AppShell : Shell
     /// <summary>Name in the menu: the kind, numbered when a channel has more than one of it.</summary>
     string Name(IInstrument instrument)
     {
-        string kind = instrument switch { StepSequencer => SequencerName, BqSequencer => BqName, CirklonSequencer => CirklonName, _ => ArpName };
+        string kind = instrument switch { StepSequencer => SequencerName, BqSequencer => BqName, CirklonSequencer => CirklonName, DuoSequencer => DuoName, _ => ArpName };
         var same = _instruments.All.Where(i => i.Channel == instrument.Channel && i.GetType() == instrument.GetType()).ToList();
         return same.Count > 1 ? $"{kind} {same.IndexOf(instrument) + 1}" : kind;
     }
@@ -127,12 +129,13 @@ public class AppShell : Shell
 
     async Task AddView(int channel)
     {
-        string? choice = await DisplayActionSheetAsync($"View op kanaal {channel + 1}", "Annuleren", null, SequencerName, BqName, CirklonName, ArpName);
+        string? choice = await DisplayActionSheetAsync($"View op kanaal {channel + 1}", "Annuleren", null, SequencerName, BqName, CirklonName, DuoName, ArpName);
         IInstrument? added = choice switch
         {
             SequencerName => _instruments.AddSequencer(channel),
             BqName => _instruments.AddBq(channel),
             CirklonName => _instruments.AddCirklon(channel),
+            DuoName => _instruments.AddDuo(channel),
             ArpName => _instruments.AddArp(channel),
             _ => null,
         };
