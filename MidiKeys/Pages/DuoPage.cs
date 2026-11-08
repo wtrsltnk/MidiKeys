@@ -9,7 +9,6 @@ namespace MidiKeys.Pages;
 /// </summary>
 public class DuoPage : ContentPage
 {
-    static readonly string[] NoteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     static readonly Color Lit = Color.FromArgb("#ECE9E2");
     static readonly Color Unlit = Color.FromArgb("#2E2E2E");
 
@@ -18,7 +17,6 @@ public class DuoPage : ContentPage
     readonly List<Action> _refreshers = new();
 
     readonly Button _startStop = IconButton("▶", "Start");
-    readonly Label _rootLabel = Text("");
     readonly Label _gateLabel = Text("");
 
     public DuoPage(DuoSequencer duo)
@@ -31,19 +29,22 @@ public class DuoPage : ContentPage
         _panel.Changed += (_, _) => _duo.Save();
         _panel.PlayPressed += (_, _) => StartStop();
         _panel.KeyPressed += (_, key) => EnterKey(key);
-        _panel.OctavePressed += (_, delta) => Transpose(12 * delta);
+        _panel.OctavePressed += (_, delta) => ShiftOctave(delta);
 
         // Positions arrive on the clock thread; hop to the UI thread for drawing.
         _duo.StepChanged += step => Dispatcher.Dispatch(() => _panel.ShowPosition(step));
         _duo.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop and back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop with the note length next to it, back to step 1 (the tempo is in the side menu)
         _startStop.Clicked += (_, _) => StartStop();
+        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _duo.Gate * 100, WidthRequest = 120 };
+        gate.ValueChanged += (_, e) => { _duo.Gate = e.NewValue / 100; Refresh(); };
+        gate.DragCompleted += (_, _) => _duo.Save();
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _duo.Reset();
-        PageHeader.Set(this, _startStop, reset);
+        PageHeader.Set(this, _startStop, Group(Theme.Print("LENGTH"), gate, _gateLabel), reset);
 
-        // ---- speed, transpose, random, boost, gate
+        // ---- speed, random, boost
         var speed = new HorizontalStackLayout { Spacing = 2 };
         foreach (var (label, rate) in new[] { ("1/4", 0), ("1/8", 1), ("1/16", 2) })
         {
@@ -52,11 +53,6 @@ public class DuoPage : ContentPage
             _refreshers.Add(() => Light(button, _duo.Rate == rate));
             speed.Children.Add(button);
         }
-
-        var down = IconButton("▼", "Een halve toon omlaag");
-        down.Clicked += (_, _) => Transpose(-1);
-        var up = IconButton("▲", "Een halve toon omhoog");
-        up.Clicked += (_, _) => Transpose(1);
 
         var random = Key("RANDOM");
         ToolTipProperties.SetText(random, "De stappen in willekeurige volgorde");
@@ -68,18 +64,12 @@ public class DuoPage : ContentPage
         boost.Clicked += (_, _) => { _duo.Boost = !_duo.Boost; Changed(); };
         _refreshers.Add(() => Light(boost, _duo.Boost));
 
-        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _duo.Gate * 100, WidthRequest = 160 };
-        gate.ValueChanged += (_, e) => { _duo.Gate = e.NewValue / 100; Refresh(); };
-        gate.DragCompleted += (_, _) => _duo.Save();
-
         var controls = new FlexLayout { Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap, AlignItems = Microsoft.Maui.Layouts.FlexAlignItems.Center };
         foreach (var view in new View[]
                  {
                      new Label { Text = "duo", FontSize = 34, FontAttributes = FontAttributes.Bold, TextColor = Lit, VerticalOptions = LayoutOptions.Center },
                      Group(Caption("SPEED"), speed),
-                     Group(Caption("TRANSPOSE"), down, _rootLabel, up),
                      Group(random, boost),
-                     Group(Caption("GATE"), gate, _gateLabel),
                  })
         {
             view.Margin = new Thickness(0, 0, 24, 6);
@@ -121,9 +111,10 @@ public class DuoPage : ContentPage
         _panel.Refresh();
     }
 
-    void Transpose(int delta)
+    /// <summary>The red arrows on the panel: the whole keyboard an octave down or up.</summary>
+    void ShiftOctave(int delta)
     {
-        _duo.Root = Math.Clamp(_duo.Root + delta, 24, 96);
+        _duo.Root = Math.Clamp(_duo.Root + 12 * delta, 24, 96);
         Changed();
     }
 
@@ -138,7 +129,6 @@ public class DuoPage : ContentPage
         _startStop.Text = _duo.IsRunning ? "■" : "▶";
         ToolTipProperties.SetText(_startStop, _duo.IsRunning ? "Stop" : "Start");
         _startStop.BackgroundColor = _duo.IsRunning ? Theme.Red : Theme.Key;
-        _rootLabel.Text = $"{NoteNames[_duo.Root % 12]}{_duo.Root / 12 - 1}";
         _gateLabel.Text = $"{_duo.Gate * 100:0}%";
         foreach (var refresh in _refreshers)
             refresh();

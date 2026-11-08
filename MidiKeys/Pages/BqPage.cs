@@ -53,14 +53,16 @@ public class BqPage : ContentPage
         _bq.StepChanged += position => Dispatcher.Dispatch(() => _panel.ShowPosition(position));
         _bq.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop, step and back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop with the duty next to it, step and back to step 1 (the tempo is in the side menu)
         _startStop.Clicked += (_, _) => { if (_bq.IsRunning) _bq.Stop(); else _bq.Start(); };
         _step.FontSize = 14;
         _step.FontAttributes = FontAttributes.Bold;
         _step.Clicked += (_, _) => _bq.Step();
         var reset = IconButton("⏮", "Terug naar stap 1");
         reset.Clicked += (_, _) => _bq.Reset();
-        PageHeader.Set(this, _startStop, _step, reset);
+        var duty = Setting(() => (_bq.Duty - 0.1) / 0.8, v => _bq.Duty = 0.1 + v * 0.8);
+        duty.WidthRequest = 120;
+        PageHeader.Set(this, _startStop, Group(Theme.Print("DUTY"), duty, _dutyLabel), _step, reset);
 
         // ---- sequence mode: eight buttons of equal width, in one row (or two on a narrow screen)
         foreach (var (mode, label, name) in Modes)
@@ -94,7 +96,7 @@ public class BqPage : ContentPage
         header.Add(Caption("SEQUENCE MODE"), 1, 0);
         header.Add(_modes, 2, 0);
 
-        // ---- portamento, duty and octave: caption above, control below, in equal columns
+        // ---- portamento and octave: caption above, control below, in equal columns
         var octDown = IconButton("▼", "Octaaf omlaag");
         octDown.Clicked += (_, _) => ShiftOctave(-1);
         var octUp = IconButton("▲", "Octaaf omhoog");
@@ -107,14 +109,12 @@ public class BqPage : ContentPage
             {
                 new ColumnDefinition(GridLength.Star),
                 new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Star),
                 new ColumnDefinition(GridLength.Auto),
             },
         };
         settings.Add(Cell("PORTAMENTO A", Setting(() => _bq.Portamento[0], v => _bq.Portamento[0] = v), _portaLabels[0]), 0, 0);
         settings.Add(Cell("PORTAMENTO B", Setting(() => _bq.Portamento[1], v => _bq.Portamento[1] = v), _portaLabels[1]), 1, 0);
-        settings.Add(Cell("DUTY", Setting(() => (_bq.Duty - 0.1) / 0.8, v => _bq.Duty = 0.1 + v * 0.8), _dutyLabel), 2, 0);
-        settings.Add(Cell("OCTAVE", Group(octDown, _octaveLabel, octUp)), 3, 0);
+        settings.Add(Cell("OCTAVE", Group(octDown, _octaveLabel, octUp)), 2, 0);
 
         var controls = new VerticalStackLayout { Spacing = 8, Children = { header, settings } };
 

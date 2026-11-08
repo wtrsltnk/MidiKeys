@@ -4,8 +4,8 @@ namespace MidiKeys.Controls;
 
 /// <summary>
 /// The sequencer side of a Dato DUO: a light body with a ring of 8 big round step buttons around a
-/// start/stop button, and a two-octave pentatonic keyboard of round coloured keys with two red arrow
-/// buttons for the octave. Side by side in
+/// start/stop button, and a two-octave pentatonic keyboard: one row of ten tall black keys with a
+/// glowing coloured edge, with a red arrow on either side for the octave. Side by side in
 /// landscape, stacked in portrait. The current step is drawn on a separate, cheap layer
 /// (<see cref="Lights"/>), so the panel itself only redraws when something changes.
 /// </summary>
@@ -13,11 +13,13 @@ public class DuoPanel : GraphicsView, IDrawable
 {
     static readonly string[] NoteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-    /// <summary>A colour per note of the pentatonic scale; the upper octave is a lighter shade.</summary>
+    /// <summary>The glow colour per note of the pentatonic scale, as on the DUO: red, lime, green, blue, violet.</summary>
     static readonly Color[] KeyColors =
     [
-        Color.FromArgb("#F2544A"), Color.FromArgb("#FF9F3A"), Color.FromArgb("#F7CE2F"), Color.FromArgb("#4CC764"), Color.FromArgb("#3F9BFF"),
+        Color.FromArgb("#FF3B3B"), Color.FromArgb("#C8EB3A"), Color.FromArgb("#2FD66B"), Color.FromArgb("#2F86FF"), Color.FromArgb("#A866FF"),
     ];
+    static readonly Color KeyBlack = Color.FromArgb("#161616");
+    static readonly Color Arrow = Color.FromArgb("#E0302B");
 
     static readonly Color Body = Color.FromArgb("#ECE9E2");
     static readonly Color BodyEdge = Color.FromArgb("#CFCAC0");
@@ -69,8 +71,9 @@ public class DuoPanel : GraphicsView, IDrawable
         Lights.Invalidate();
     }
 
+    /// <summary>The colour of a key; the upper octave is a little lighter.</summary>
     public static Color ColorOf(int key) =>
-        key < 5 ? KeyColors[key] : Blend(KeyColors[key % 5], Colors.White, 0.4f);
+        key < 5 ? KeyColors[key] : Blend(KeyColors[key % 5], Colors.White, 0.2f);
 
     static Color Blend(Color a, Color b, float t) =>
         new(a.Red + (b.Red - a.Red) * t, a.Green + (b.Green - a.Green) * t, a.Blue + (b.Blue - a.Blue) * t);
@@ -115,23 +118,21 @@ public class DuoPanel : GraphicsView, IDrawable
     PointF StepAt(int step) => StepCenter(step, RingR * 0.66f);
     PointF LedAt(int step) => StepCenter(step, RingR * 0.93f);
 
-    // The keyboard is a grid of 2 rows × 6 columns: the red arrow buttons in the first column,
-    // then five keys per row, the upper octave on top.
-    (PointF Center, float Radius) Cell(int row, int col)
-    {
-        var box = KeysBox;
-        float cellW = box.Width / 6, cellH = box.Height / 2;
-        float r = Math.Min(cellW, cellH) * 0.42f;
-        return (new PointF(box.X + (col + 0.5f) * cellW, box.Y + (row + 0.5f) * cellH), r);
-    }
+    // The keyboard: one row of ten keys across the keys area, a red arrow above either end.
+    float KeyCellW => KeysBox.Width / DuoSequencer.KeyCount;
+    float KeyW => Math.Min(KeyCellW * 0.7f, KeysBox.Height * 0.3f);
+    float KeyH => Math.Min(KeyW * 2.1f, KeysBox.Height * 0.55f);
+    float KeysTop => KeysBox.Y + KeysBox.Height * 0.58f - KeyH / 2;
 
-    (PointF Center, float Radius) KeyAt(int key) => Cell(key >= 5 ? 0 : 1, 1 + key % 5);
+    RectF KeyRect(int key) =>
+        new(KeysBox.X + (key + 0.5f) * KeyCellW - KeyW / 2, KeysTop, KeyW, KeyH);
 
-    /// <summary>The octave arrow: ▲ (+1) beside the top row, ▼ (−1) beside the bottom row.</summary>
-    (PointF Center, float Radius) ArrowAt(int delta)
+    /// <summary>The octave arrow: ◀ (−1) above the lowest key, ▶ (+1) above the highest.</summary>
+    (PointF Center, float Size) ArrowAt(int delta)
     {
-        var (c, r) = Cell(delta > 0 ? 0 : 1, 0);
-        return (c, r * 0.7f);
+        float size = Math.Min(KeyW * 1.1f, KeysBox.Height * 0.16f);
+        var key = KeyRect(delta < 0 ? 0 : DuoSequencer.KeyCount - 1);
+        return (new PointF(key.Center.X, KeysTop - size * 1.1f), size);
     }
 
     static bool Inside(PointF p, PointF c, float r) => (p.X - c.X) * (p.X - c.X) + (p.Y - c.Y) * (p.Y - c.Y) <= r * r;
@@ -156,8 +157,7 @@ public class DuoPanel : GraphicsView, IDrawable
         }
         for (int key = 0; key < DuoSequencer.KeyCount; key++)
         {
-            var (c, r) = KeyAt(key);
-            if (Inside(p, c, r * 1.1f))
+            if (KeyRect(key).Inflate(KeyCellW * 0.12f, 8).Contains(p))
             {
                 KeyPressed?.Invoke(this, key);
                 return;
@@ -165,8 +165,8 @@ public class DuoPanel : GraphicsView, IDrawable
         }
         foreach (int delta in new[] { 1, -1 })
         {
-            var (c, r) = ArrowAt(delta);
-            if (Inside(p, c, r * 1.3f))
+            var (c, size) = ArrowAt(delta);
+            if (Inside(p, c, size * 0.8f))
             {
                 OctavePressed?.Invoke(this, delta);
                 return;
@@ -204,12 +204,12 @@ public class DuoPanel : GraphicsView, IDrawable
             var at = StepAt(step);
             int key = _duo.Keys[step];
             bool on = _duo.On[step];
-            canvas.FillColor = on ? ColorOf(key) : StepOff;
+            canvas.FillColor = on ? Blend(ColorOf(key), Colors.White, 0.35f) : StepOff;
             canvas.FillCircle(at.X, at.Y, StepR);
             if (!on)
             {
                 canvas.FillColor = ColorOf(key);
-                canvas.FillCircle(at.X, at.Y, StepR * 0.25f); // the note it would play
+                canvas.FillCircle(at.X, at.Y - StepR * 0.6f, StepR * 0.14f); // the note it would play, above its name
             }
 
             if (step == EditStep && !_duo.IsRunning)
@@ -247,37 +247,45 @@ public class DuoPanel : GraphicsView, IDrawable
 
     void DrawKeys(ICanvas canvas)
     {
-        foreach (int delta in new[] { 1, -1 })
+        // Red triangles pointing left and right
+        foreach (int delta in new[] { -1, 1 })
         {
-            var (c, r) = ArrowAt(delta);
-            canvas.FillColor = BodyEdge;
-            canvas.FillCircle(c.X, c.Y + 3, r);
-            canvas.FillColor = Running;
-            canvas.FillCircle(c.X, c.Y, r);
-            float s = r * 0.42f;
+            var (c, size) = ArrowAt(delta);
+            float h = size * 0.5f;
             var arrow = new PathF();
-            arrow.MoveTo(c.X - s, c.Y + delta * s * 0.5f);
-            arrow.LineTo(c.X + s, c.Y + delta * s * 0.5f);
-            arrow.LineTo(c.X, c.Y - delta * s * 0.7f);
+            arrow.MoveTo(c.X + delta * size * 0.55f, c.Y);
+            arrow.LineTo(c.X - delta * size * 0.45f, c.Y - h);
+            arrow.LineTo(c.X - delta * size * 0.45f, c.Y + h);
             arrow.Close();
-            canvas.FillColor = Colors.White;
+            canvas.FillColor = BodyEdge;
+            canvas.Translate(0, 3);
+            canvas.FillPath(arrow); // a little depth
+            canvas.Translate(0, -3);
+            canvas.FillColor = Arrow;
             canvas.FillPath(arrow);
         }
 
+        // Tall black keys with a glowing coloured edge
+        float radius = KeyW * 0.42f;
         for (int key = 0; key < DuoSequencer.KeyCount; key++)
         {
-            var (c, r) = KeyAt(key);
-            canvas.FillColor = BodyEdge;
-            canvas.FillCircle(c.X, c.Y + 3, r); // a little depth
-            canvas.FillColor = ColorOf(key);
-            canvas.FillCircle(c.X, c.Y, r);
+            var r = KeyRect(key);
+            var color = ColorOf(key);
+            float edge = Math.Max(3, KeyW * 0.12f);
+
+            canvas.FillColor = color.WithAlpha(0.28f);
+            canvas.FillRoundedRectangle(r.Inflate(edge * 1.6f, edge * 1.6f), radius + edge * 1.6f); // glow
+            canvas.FillColor = color;
+            canvas.FillRoundedRectangle(r, radius);
+            canvas.FillColor = KeyBlack;
+            canvas.FillRoundedRectangle(r.Inflate(-edge, -edge), radius - edge);
 
             int note = _duo.NoteOf(key);
-            canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
-            canvas.FontSize = r * 0.42f;
-            canvas.FontColor = Ink;
-            canvas.DrawString($"{NoteNames[note % 12]}{note / 12 - 1}", c.X - r, c.Y - r * 0.3f, r * 2, r * 0.6f,
-                HorizontalAlignment.Center, VerticalAlignment.Center);
+            canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            canvas.FontSize = Math.Min(16, KeyCellW * 0.22f);
+            canvas.FontColor = Ink.WithAlpha(0.6f);
+            canvas.DrawString($"{NoteNames[note % 12]}{note / 12 - 1}", r.X - KeyCellW * 0.2f, r.Bottom + edge * 2, r.Width + KeyCellW * 0.4f, 20,
+                HorizontalAlignment.Center, VerticalAlignment.Top);
         }
     }
 

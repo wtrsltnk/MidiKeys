@@ -89,8 +89,9 @@ steps fill the whole window, so the sliders are as long as possible. Each step i
 - **16/1 – 8/2**: one 16-step sequence, or two independent 8-step sequences A1–A8 and B1–B8 as
   two voices on the same channel
 - **SEQUENTIAL – RANDOM**: forward or random order
-- **OCTAVE** ▼ / ▲: the slider range; **PULSE WIDTH**: gate length 5–95 % of a step
-- In the title bar: ▶/■ start/stop, ⏮ back to step 1
+- **OCTAVE** ▼ / ▲: the slider range
+- In the title bar: ▶/■ start/stop with **PULSE WIDTH** (gate length 5–95 % of a step) next to
+  it, ⏮ back to step 1
 
 The three gate buses are separate gate outputs on the 1601; here they mean note, accent and
 legato because that is what is useful over MIDI.
@@ -122,8 +123,8 @@ panel, white print, black knobs and red LEDs. Each step is a sixteenth note.
 
 - **PORTAMENTO A / B**: sent as CC 5 (portamento time) and CC 65 (on/off) before the notes of
   that row; it works if your synth responds to them
-- **DUTY**: gate length 10–90 % of a step
-- In the title bar: ▶/■ start/stop, **STEP** (one step on while it is stopped), ⏮ back to step 1
+- In the title bar: ▶/■ start/stop with **DUTY** (gate length 10–90 % of a step) next to it,
+  **STEP** (one step on while it is stopped), ⏮ back to step 1
 
 Unlike the hardware, A and B both play on the channel of the view (the BQ-10 sends B on the
 next channel when they run separately). Left out because they do nothing over MIDI: the jacks,
@@ -165,10 +166,12 @@ Not taken over: song mode, scenes and the other tracks, the "hold" length, the X
 no transpose), aux events other than CCs, the polyrhythm timebase, gang and slope edit.
 
 ## DUO
+<img src="docs/screenshots/duo.png" alt="DUO" width="800">
+
 The round sequencer of the Dato DUO, the synth for two players: a light body with a ring of 8
-big round step buttons around a start/stop button, and a two-octave pentatonic keyboard of
-round coloured keys (upper octave on the top row, in lighter shades) with two red arrow
-buttons for the octave. Every note comes from
+big round step buttons around a start/stop button, and a two-octave pentatonic keyboard: one
+row of ten tall black keys with a glowing coloured edge (red, lime, green, blue, violet per
+octave), with a red arrow on either side for the octave. Every note comes from
 the pentatonic scale, so whatever you enter sounds good; easy for children too. The synth side
 of the DUO is your own synth.
 - **Step buttons**: tap to switch a step on or off; it shows the colour and name of its note
@@ -177,11 +180,10 @@ of the DUO is your own synth.
   hear it, and moves on to the next step, so you tap in a melody note by note. Running, a key
   records into the step that plays.
 - **SPEED**: 1/4, 1/8 (default) or 1/16 notes per step
-- The two **red arrow buttons** beside the keyboard: ▲ an octave up, ▼ an octave down
-- **TRANSPOSE** ▼ / ▲: moves the whole scale a semitone at a time (C4 by default)
+- The two **red arrows** above the keyboard: ◀ an octave down, ▶ an octave up (C1–C7; C4 by default)
 - **RANDOM**: the steps play in random order; **BOOST**: every note at full velocity
-- **GATE**: note length 5–95 % of a step
-- In the title bar (or the button in the middle of the ring): ▶/■ start/stop, ⏮ back to step 1
+- In the title bar: ▶/■ start/stop (also the button in the middle of the ring) with **LENGTH**
+  (note length 5–95 % of a step) next to it, ⏮ back to step 1
 
 ## Arp
 <img src="docs/screenshots/arp.png" alt="Arp" width="800">
@@ -250,7 +252,7 @@ the channel of the piano or of the views that should play it.
 | `Services/StepSequencer.cs`, `Controls/SequencerPanel.cs`, `Pages/SequencerPage.cs` | 1601 Sequencer: engine, drawn panel, page |
 | `Services/BqSequencer.cs`, `Controls/BqPanel.cs`, `Pages/BqPage.cs` | BQ-10: engine with the sequence modes, drawn knobs, page |
 | `Services/CirklonSequencer.cs`, `Controls/CirklonPanel.cs`, `Pages/CirklonPage.cs` | Cirklon2: P3 pattern engine, screen + step keys, page |
-| `Services/DuoSequencer.cs`, `Controls/DuoPanel.cs`, `Pages/DuoPage.cs` | DUO: 8-step pentatonic engine, ring and keys, page |
+| `Services/DuoSequencer.cs`, `Controls/DuoPanel.cs`, `Pages/DuoPage.cs` | DUO: 8-step pentatonic engine, ring, keys and octave arrows, page |
 | `Services/Arpeggiator.cs`, `Pages/ArpPage.cs` | Arp: engine with held/latched notes and rhythm, page with its own keyboard |
 
 ## How it works

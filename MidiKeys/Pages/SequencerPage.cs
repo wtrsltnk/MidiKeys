@@ -40,16 +40,16 @@ public class SequencerPage : ContentPage
         _seq.StepChanged += positions => Dispatcher.Dispatch(() => _panel.ShowPositions(positions));
         _seq.RunningChanged += (_, _) => Refresh();
 
-        // ---- title bar: start/stop and back to step 1 (the tempo is in the side menu)
+        // ---- title bar: start/stop with the gate length next to it, back to step 1 (the tempo is in the side menu)
         _startStop.Clicked += (_, _) => { if (_seq.IsRunning) _seq.Stop(); else _seq.Start(); };
-        var reset = IconButton("⏮", "Terug naar stap 1");
-        reset.Clicked += (_, _) => _seq.Reset();
-        PageHeader.Set(this, _startStop, reset);
-
-        // ---- the panel's switches as large buttons
-        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _seq.GateLength * 100, WidthRequest = 160 };
+        var gate = new Slider { Minimum = 5, Maximum = 95, Value = _seq.GateLength * 100, WidthRequest = 120 };
         gate.ValueChanged += (_, e) => { _seq.GateLength = e.NewValue / 100; Refresh(); };
         gate.DragCompleted += (_, _) => _seq.Save();
+        var reset = IconButton("⏮", "Terug naar stap 1");
+        reset.Clicked += (_, _) => _seq.Reset();
+        PageHeader.Set(this, _startStop, Group(Theme.Print("PULSE WIDTH"), gate, _gateLabel), reset);
+
+        // ---- the panel's switches as large buttons
 
         var octDown = IconButton("▼", "Octaaf omlaag");
         octDown.Clicked += (_, _) => ShiftOctave(-1);
@@ -67,7 +67,6 @@ public class SequencerPage : ContentPage
                      Switch(("16/1", false), ("8/2", true), () => _seq.Split, v => _seq.Split = v),
                      Switch(("SEQUENTIAL", false), ("RANDOM", true), () => _seq.RandomOrder, v => _seq.RandomOrder = v),
                      Group(Caption("OCTAVE"), octDown, _octaveLabel, octUp),
-                     Group(Caption("PULSE WIDTH"), gate, _gateLabel),
                  })
         {
             view.Margin = new Thickness(0, 0, 24, 6);

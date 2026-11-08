@@ -2,8 +2,8 @@ namespace MidiKeys.Services;
 
 /// <summary>
 /// The round 8-step sequencer of a Dato DUO on one MIDI channel. Every step plays a note of a
-/// two-octave pentatonic scale, so whatever you enter sounds good. Transpose moves the whole
-/// scale, random plays the steps in random order, boost plays every note with full velocity.
+/// two-octave pentatonic scale, so whatever you enter sounds good. The root moves the keyboard by
+/// octaves, random plays the steps in random order, boost plays every note with full velocity.
 /// Runs on the shared <see cref="MusicClock"/>.
 /// </summary>
 public sealed class DuoSequencer : IClockClient, IInstrument
