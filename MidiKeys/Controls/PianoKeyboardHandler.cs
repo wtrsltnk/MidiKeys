@@ -10,6 +10,7 @@ public class PianoKeyboardHandler : ViewHandler<PianoKeyboard, PianoKeyboardView
             [nameof(PianoKeyboard.BaseNote)] = (h, v) => h.PlatformView.BaseNote = v.BaseNote,
             [nameof(PianoKeyboard.WhiteKeyCount)] = (h, v) => h.PlatformView.WhiteKeyCount = v.WhiteKeyCount,
             [nameof(PianoKeyboard.VelocityConfig)] = (h, v) => h.PlatformView.VelocityConfig = v.VelocityConfig,
+            [nameof(PianoKeyboard.MarkedNotes)] = (h, v) => h.PlatformView.MarkedNotes = v.MarkedNotes,
         };
 
     public PianoKeyboardHandler() : base(Mapper) { }

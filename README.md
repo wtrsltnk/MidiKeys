@@ -173,6 +173,9 @@ An arpeggiator with its own keyboard, built so every setting is visible and take
 - **HOLD** (on by default): the chord keeps playing after you let go; the first key of a new
   chord replaces it. Without Hold the arp plays while keys are down.
 - ▼ / ▲ octave for the keyboard; the line next to it shows the notes being played
+- While it runs, the keys of the notes the arp plays light up green (white keys light green,
+  black keys a darker green), so you see which chord is latched; a key you press shows its
+  velocity colour on top. Octave copies above the chord are not marked.
 - Notes play at the velocity they were played with. When a sequencer is already running, the
   arp falls in on the next step of its rate.
 
@@ -209,13 +212,13 @@ the channel of the piano or of the views that should play it.
 | `Platforms/Android/AndroidMidiOutput.cs` | `android.media.midi`: device list, hot-plug, sending |
 | `Platforms/Windows/WindowsMidiOutput.cs` | `Windows.Devices.Midi`: device watcher, hot-plug, sending |
 | `Platforms/Android/MainActivity.cs` | Landscape, screen kept on, full screen |
-| `Controls/PianoKeyboard.cs`, `Controls/PianoKeyboardHandler.cs` | MAUI control (BaseNote, events) + shared handler |
+| `Controls/PianoKeyboard.cs`, `Controls/PianoKeyboardHandler.cs` | MAUI control (BaseNote, MarkedNotes, events) + shared handler |
 | `Platforms/Android/PianoKeyboardView.cs` | Native view: drawing + multitouch per pointer |
 | `Platforms/Windows/PianoKeyboardView.cs` | WinUI view: same behaviour for mouse, pen, touch and PC keyboard |
 | `Platforms/Android/AccelSampler.cs` | Accelerometer ring buffer, gravity filtered out, peak lookup |
 | `Services/VelocitySettings.cs` | Velocity config, velocity + calibration math, Preferences |
 | `Controls/Theme.cs` | TR-808 colours and default control styles, plus the 1601 and BQ-10 colours |
-| `Controls/KeyColors.cs` | Key colours and pressed-key colour from the velocity |
+| `Controls/KeyColors.cs` | Key colours, pressed-key colour from the velocity, light green for marked keys |
 | `Controls/PageHeader.cs` | Title bar with the page title left and its main controls right |
 | `Controls/MidiDevicePicker.cs` | MIDI device choice + connection status (side menu) |
 | `Pages/SettingsPage.cs`, `Pages/CalibrationPage.cs` | Velocity settings and calibration |

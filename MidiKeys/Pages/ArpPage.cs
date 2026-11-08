@@ -182,6 +182,7 @@ public class ArpPage : ContentPage
         Theme.Light(_hold, _arp.Hold);
 
         var notes = _arp.Notes;
+        _keyboard.MarkedNotes = _arp.IsRunning ? notes.ToArray() : []; // the keys the arp uses light green
         _notesLabel.Text = !_arp.IsRunning ? "Gestopt: de toetsen spelen gewoon noten"
             : notes.Count == 0
             ? (_arp.Hold ? "Speel een akkoord: het blijft doorspelen" : "Houd toetsen ingedrukt om te arpeggiëren")

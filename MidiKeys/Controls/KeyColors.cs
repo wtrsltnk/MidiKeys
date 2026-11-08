@@ -1,10 +1,15 @@
 namespace MidiKeys.Controls;
 
-/// <summary>Key colours in the TR-808 look; pressed keys turn orange: pale for a soft touch, saturated for a hard one.</summary>
+/// <summary>
+/// Key colours in the TR-808 look; pressed keys turn orange: pale for a soft touch, saturated for a hard one.
+/// Marked keys (e.g. the notes an arp plays) are light green.
+/// </summary>
 static class KeyColors
 {
     public static readonly (byte R, byte G, byte B) White = (239, 233, 214), Black = (30, 30, 30);
     public static readonly (byte R, byte G, byte B) Border = (60, 60, 60), Text = (125, 121, 111);
+
+    public static readonly (byte R, byte G, byte B) MarkedWhite = (190, 236, 168), MarkedBlack = (96, 168, 78);
 
     static readonly (byte R, byte G, byte B) WhiteSoft = (250, 218, 185), WhiteHard = (240, 125, 25);
     static readonly (byte R, byte G, byte B) BlackSoft = (95, 60, 30), BlackHard = (255, 150, 60);

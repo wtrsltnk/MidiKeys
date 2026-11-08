@@ -41,6 +41,9 @@ public class PianoKeyboardView : AView
     readonly APaint _whitePaint = Fill(Rgb(KeyColors.White));
     readonly APaint _blackPaint = Fill(Rgb(KeyColors.Black));
     readonly APaint _pressedPaint = Fill(Rgb(KeyColors.White)); // colour set per key from its velocity
+    readonly APaint _markedWhitePaint = Fill(Rgb(KeyColors.MarkedWhite));
+    readonly APaint _markedBlackPaint = Fill(Rgb(KeyColors.MarkedBlack));
+    HashSet<int> _marked = new();
     readonly APaint _borderPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = Rgb(KeyColors.Border) };
     readonly APaint _textPaint = new(Android.Graphics.PaintFlags.AntiAlias) { Color = Rgb(KeyColors.Text) };
 
@@ -90,6 +93,19 @@ public class PianoKeyboardView : AView
             if (_whiteKeyCount == value) return;
             ReleaseAll();
             _whiteKeyCount = value;
+            Invalidate();
+        }
+    }
+
+    /// <summary>Notes drawn light green; a pressed key still shows its velocity colour.</summary>
+    public int[] MarkedNotes
+    {
+        get => _marked.ToArray();
+        set
+        {
+            var marked = new HashSet<int>(value ?? []);
+            if (marked.SetEquals(_marked)) return;
+            _marked = marked;
             Invalidate();
         }
     }
@@ -201,7 +217,7 @@ public class PianoKeyboardView : AView
         {
             int note = _baseNote + WhiteSemitone(i);
             _rect.Set(i * ww, 0, (i + 1) * ww, h);
-            canvas.DrawRect(_rect, held.TryGetValue(note, out var vel) ? PressedPaint(false, vel) : _whitePaint);
+            canvas.DrawRect(_rect, KeyPaint(note, false, held));
             canvas.DrawRect(_rect, _borderPaint);
 
             if (WhiteSemitone(i) % 12 == 0 && note <= 127)
@@ -215,8 +231,18 @@ public class PianoKeyboardView : AView
             int note = _baseNote + WhiteSemitone(i) + 1;
             float left = (i + 1) * ww - bw / 2;
             _rect.Set(left, -radius, left + bw, bh); // start above top edge: only bottom corners round
-            canvas.DrawRoundRect(_rect, radius, radius, held.TryGetValue(note, out var vel) ? PressedPaint(true, vel) : _blackPaint);
+            canvas.DrawRoundRect(_rect, radius, radius, KeyPaint(note, true, held));
         }
+    }
+
+    /// <summary>Pressed: the velocity colour; marked: light green; otherwise the plain key.</summary>
+    APaint KeyPaint(int note, bool black, Dictionary<int, int?> held)
+    {
+        if (held.TryGetValue(note, out var velocity))
+            return PressedPaint(black, velocity);
+        if (_marked.Contains(note))
+            return black ? _markedBlackPaint : _markedWhitePaint;
+        return black ? _blackPaint : _whitePaint;
     }
 
     APaint PressedPaint(bool black, int? velocity)
