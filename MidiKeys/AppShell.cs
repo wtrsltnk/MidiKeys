@@ -5,11 +5,16 @@ using MidiKeys.Services;
 namespace MidiKeys;
 
 /// <summary>
-/// Hamburger menu (top left): Piano, then a Sequencer and an Arp section listing what the user
-/// added, each on its own MIDI channel, with a + next to each section title to add one on a free channel.
+/// Hamburger menu (top left): Piano, then a section per MIDI channel listing the views the user
+/// added to it (1601 sequencers, BQ-10s, Cirklon2s and arps), with a + to add a view; below them a + for a new channel.
 /// </summary>
 public class AppShell : Shell
 {
+    const string SequencerName = "1601 SEQUENCER";
+    const string BqName = "BQ-10";
+    const string CirklonName = "CIRKLON2";
+    const string ArpName = "ARP";
+
     static readonly Color MenuBackground = Theme.PanelDark;
     static readonly Color Selected = Theme.Key;
 
@@ -18,8 +23,7 @@ public class AppShell : Shell
     readonly IMidiOutput _midi;
     readonly VelocitySettings _velocity;
     readonly ShellItem _piano;
-    readonly Dictionary<StepSequencer, (ShellItem Item, SequencerPage Page)> _sequencers = new();
-    readonly Dictionary<Arpeggiator, (ShellItem Item, ArpPage Page)> _arps = new();
+    readonly Dictionary<IInstrument, (ShellItem Item, Page Page)> _views = new();
     readonly VerticalStackLayout _menu = new() { Padding = new Thickness(0, 12) };
 
     public AppShell(MainPage piano, Instruments instruments, MusicClock clock, IMidiOutput midi, VelocitySettings velocity)
@@ -46,10 +50,8 @@ public class AppShell : Shell
 
         _piano = new ShellContent { Title = "Piano", Route = "piano", Content = piano };
         Items.Add(_piano);
-        foreach (var sequencer in instruments.Sequencers)
-            AddPage(sequencer);
-        foreach (var arp in instruments.Arps)
-            AddPage(arp);
+        foreach (var instrument in instruments.All)
+            AddPage(instrument);
 
         Navigated += (_, _) => BuildMenu();
         BuildMenu();
@@ -57,48 +59,35 @@ public class AppShell : Shell
 
     // ---------------------------------------------------------------- pages
 
-    ShellItem AddPage(StepSequencer sequencer)
+    ShellItem AddPage(IInstrument instrument)
     {
-        var page = new SequencerPage(sequencer);
-        ShellItem item = new ShellContent { Title = page.Title, Content = page };
+        Page page = instrument switch
+        {
+            StepSequencer sequencer => new SequencerPage(sequencer),
+            BqSequencer bq => new BqPage(bq),
+            CirklonSequencer ck => new CirklonPage(ck),
+            Arpeggiator arp => new ArpPage(arp, _velocity),
+            _ => throw new ArgumentException("Unknown instrument", nameof(instrument)),
+        };
+        ShellItem item = new ShellContent { Content = page };
         Items.Add(item);
-        _sequencers[sequencer] = (item, page);
+        _views[instrument] = (item, page);
+        UpdateTitles();
         return item;
     }
 
-    ShellItem AddPage(Arpeggiator arp)
-    {
-        var page = new ArpPage(arp, _velocity);
-        ShellItem item = new ShellContent { Title = page.Title, Content = page };
-        Items.Add(item);
-        _arps[arp] = (item, page);
-        return item;
-    }
-
-    void Remove(StepSequencer sequencer)
+    void Remove(IInstrument instrument)
     {
         // Gone from the instruments first: leaving the page rebuilds the menu from that list.
-        if (!_sequencers.Remove(sequencer, out var entry)) return;
-        _instruments.Remove(sequencer);
-        RemoveItem(entry.Item);
-        BuildMenu();
-    }
-
-    void Remove(Arpeggiator arp)
-    {
-        // Gone from the instruments first: leaving the page rebuilds the menu from that list.
-        if (!_arps.Remove(arp, out var entry)) return;
-        _instruments.Remove(arp);
-        RemoveItem(entry.Item);
-        entry.Page.Close();
-        BuildMenu();
-    }
-
-    void RemoveItem(ShellItem item)
-    {
-        if (CurrentItem == item)
+        if (!_views.Remove(instrument, out var entry)) return;
+        _instruments.Remove(instrument);
+        if (CurrentItem == entry.Item)
             CurrentItem = _piano;
-        Items.Remove(item);
+        Items.Remove(entry.Item);
+        if (entry.Page is ArpPage arpPage)
+            arpPage.Close();
+        UpdateTitles();
+        BuildMenu();
     }
 
     void Go(ShellItem item)
@@ -107,32 +96,48 @@ public class AppShell : Shell
         FlyoutIsPresented = false;
     }
 
-    async Task<int?> PickChannel()
+    /// <summary>Name in the menu: the kind, numbered when a channel has more than one of it.</summary>
+    string Name(IInstrument instrument)
+    {
+        string kind = instrument switch { StepSequencer => SequencerName, BqSequencer => BqName, CirklonSequencer => CirklonName, _ => ArpName };
+        var same = _instruments.All.Where(i => i.Channel == instrument.Channel && i.GetType() == instrument.GetType()).ToList();
+        return same.Count > 1 ? $"{kind} {same.IndexOf(instrument) + 1}" : kind;
+    }
+
+    void UpdateTitles()
+    {
+        foreach (var (instrument, (item, page)) in _views)
+            item.Title = page.Title = $"{Name(instrument)} (ch{instrument.Channel + 1})";
+    }
+
+    async Task NewChannel()
     {
         var free = _instruments.FreeChannels;
         if (free.Count == 0)
         {
-            await DisplayAlertAsync("Geen kanaal vrij", "Alle 16 MIDI-kanalen zijn al in gebruik.", "OK");
-            return null;
+            await DisplayAlertAsync("Geen kanaal vrij", "Alle 16 MIDI-kanalen hebben al een view.", "OK");
+            return;
         }
 
         var options = free.Select(ch => $"Kanaal {ch + 1}").ToArray();
-        var choice = await DisplayActionSheetAsync("MIDI-kanaal", "Annuleren", null, options);
-        int index = Array.IndexOf(options, choice);
-        return index >= 0 ? free[index] : null;
+        int index = Array.IndexOf(options, await DisplayActionSheetAsync("MIDI-kanaal", "Annuleren", null, options));
+        if (index >= 0)
+            await AddView(free[index]);
     }
 
-    async Task AddSequencer()
+    async Task AddView(int channel)
     {
-        if (await PickChannel() is int channel)
-            Go(AddPage(_instruments.AddSequencer(channel)));
-        BuildMenu();
-    }
-
-    async Task AddArp()
-    {
-        if (await PickChannel() is int channel)
-            Go(AddPage(_instruments.AddArp(channel)));
+        string? choice = await DisplayActionSheetAsync($"View op kanaal {channel + 1}", "Annuleren", null, SequencerName, BqName, CirklonName, ArpName);
+        IInstrument? added = choice switch
+        {
+            SequencerName => _instruments.AddSequencer(channel),
+            BqName => _instruments.AddBq(channel),
+            CirklonName => _instruments.AddCirklon(channel),
+            ArpName => _instruments.AddArp(channel),
+            _ => null,
+        };
+        if (added is not null)
+            Go(AddPage(added));
         BuildMenu();
     }
 
@@ -172,13 +177,14 @@ public class AppShell : Shell
         _menu.Children.Clear();
         _menu.Children.Add(MenuEntry("Piano", _piano));
 
-        _menu.Children.Add(Header("Sequencer", AddSequencer));
-        foreach (var sequencer in _instruments.Sequencers)
-            _menu.Children.Add(MenuEntry(_sequencers[sequencer].Item.Title, _sequencers[sequencer].Item, () => Remove(sequencer)));
+        foreach (int channel in _instruments.UsedChannels)
+        {
+            _menu.Children.Add(Header($"Kanaal {channel + 1}", () => AddView(channel)));
+            foreach (var instrument in _instruments.All.Where(i => i.Channel == channel))
+                _menu.Children.Add(MenuEntry(Name(instrument), _views[instrument].Item, () => Remove(instrument)));
+        }
 
-        _menu.Children.Add(Header("Arp", AddArp));
-        foreach (var arp in _instruments.Arps)
-            _menu.Children.Add(MenuEntry(_arps[arp].Item.Title, _arps[arp].Item, () => Remove(arp)));
+        _menu.Children.Add(Header("Nieuw kanaal", NewChannel));
     }
 
     /// <param name="remove">Shows a trash can that removes the entry (after asking).</param>
@@ -212,7 +218,7 @@ public class AppShell : Shell
             };
             trash.Clicked += async (_, _) =>
             {
-                if (await DisplayAlertAsync("Verwijderen", $"{text} en de instellingen verwijderen?", "Verwijderen", "Annuleren"))
+                if (await DisplayAlertAsync("Verwijderen", $"{target.Title} en de instellingen verwijderen?", "Verwijderen", "Annuleren"))
                     remove();
             };
             row.Add(trash, 1, 0);

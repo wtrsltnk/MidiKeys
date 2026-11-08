@@ -32,7 +32,7 @@ public class ArpPage : ContentPage
     {
         _arp = arp;
         _velocity = velocity;
-        Title = $"Arp (ch{arp.Channel + 1})";
+        Title = $"ARP (ch{arp.Channel + 1})";
         BackgroundColor = Theme.Panel;
 
         _startStop.Clicked += (_, _) => { if (_arp.IsRunning) _arp.Stop(); else _arp.Start(); };

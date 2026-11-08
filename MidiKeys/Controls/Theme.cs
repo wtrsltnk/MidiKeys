@@ -25,6 +25,13 @@ public static class Theme
     public static readonly Color LedOn = Color.FromArgb("#FF2A1A");
     public static readonly Color LedOff = Color.FromArgb("#3A1A16");
 
+    // The 1601 sequencer has its own look, after the Behringer 1601: black with orange lines and print.
+    public static readonly Color Orange1601 = Color.FromArgb("#F2661F");
+
+    // The BQ-10 after the Behringer BQ-10: dark grey with white print, black knobs and red LEDs.
+    public static readonly Color PanelBq = Color.FromArgb("#1F1F1F");
+    public static readonly Color Panel1601 = Color.FromArgb("#0D0D0D");
+
     static readonly Color[] StepColors = [Red, Orange, Yellow, Cream];
 
     /// <summary>Step button colour: red, orange, yellow, cream, each for a group of steps.</summary>
