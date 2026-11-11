@@ -6,7 +6,7 @@ namespace MidiKeys;
 
 /// <summary>
 /// Hamburger menu (top left): Piano, then the list of devices the user added (1601 sequencers,
-/// BQ-10s, Cirklon2s, DUOs and arps), each with the MIDI channel it plays on; + adds one.
+/// BQ-10s, Cirklon2s, DUOs, BeatStep Pro sequences and arps), each with the MIDI channel it plays on; + adds one.
 /// </summary>
 public class AppShell : Shell
 {
@@ -14,6 +14,8 @@ public class AppShell : Shell
     const string BqName = "BQ-10";
     const string CirklonName = "CIRKLON2";
     const string DuoName = "DUO";
+    const string BspSeqName = "BSP SEQ";
+    const string BspDrumName = "BSP DRUM";
     const string ArpName = "ARP";
 
     static readonly Color MenuBackground = Theme.PanelDark;
@@ -68,6 +70,7 @@ public class AppShell : Shell
             BqSequencer bq => new BqPage(bq, _clock),
             CirklonSequencer ck => new CirklonPage(ck, _clock),
             DuoSequencer duo => new DuoPage(duo, _clock),
+            BeatStepSequence bsp => new BeatStepPage(bsp, _clock),
             Arpeggiator arp => new ArpPage(arp, _velocity, _clock),
             _ => throw new ArgumentException("Unknown instrument", nameof(instrument)),
         };
@@ -101,7 +104,7 @@ public class AppShell : Shell
     /// <summary>Name in the menu: the kind, numbered when a channel has more than one of it.</summary>
     string Name(IInstrument instrument)
     {
-        string kind = instrument switch { StepSequencer => SequencerName, BqSequencer => BqName, CirklonSequencer => CirklonName, DuoSequencer => DuoName, _ => ArpName };
+        string kind = instrument switch { StepSequencer => SequencerName, BqSequencer => BqName, CirklonSequencer => CirklonName, DuoSequencer => DuoName, BeatStepSeq => BspSeqName, BeatStepDrum => BspDrumName, _ => ArpName };
         var same = _instruments.All.Where(i => i.Channel == instrument.Channel && i.GetType() == instrument.GetType()).ToList();
         return same.Count > 1 ? $"{kind} {same.IndexOf(instrument) + 1}" : kind;
     }
@@ -115,7 +118,7 @@ public class AppShell : Shell
     /// <summary>+ in the menu: choose the device, then the channel it plays on.</summary>
     async Task AddDevice()
     {
-        string? choice = await DisplayActionSheetAsync("Apparaat toevoegen", "Annuleren", null, SequencerName, BqName, CirklonName, DuoName, ArpName);
+        string? choice = await DisplayActionSheetAsync("Apparaat toevoegen", "Annuleren", null, SequencerName, BqName, CirklonName, DuoName, BspSeqName, BspDrumName, ArpName);
         if (choice is null or "Annuleren") return;
 
         // Every channel can be chosen; the devices already on it are shown behind it.
@@ -133,6 +136,8 @@ public class AppShell : Shell
             BqName => _instruments.AddBq(channel),
             CirklonName => _instruments.AddCirklon(channel),
             DuoName => _instruments.AddDuo(channel),
+            BspSeqName => _instruments.AddBeatStepSeq(channel),
+            BspDrumName => _instruments.AddBeatStepDrum(channel),
             ArpName => _instruments.AddArp(channel),
             _ => null,
         };

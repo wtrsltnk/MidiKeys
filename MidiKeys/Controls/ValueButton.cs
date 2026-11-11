@@ -51,7 +51,7 @@ public class ValueButton : Button
     void Open()
     {
         if (Shell.Current?.CurrentPage is not ContentPage page) return;
-        var host = Host(page);
+        var host = Popup.Host(page);
 
         var value = new Label
         {
@@ -126,20 +126,5 @@ public class ValueButton : Button
         overlay = layer;
         host.Children.Add(layer);
         Apply(_get());
-    }
-
-    /// <summary>The page content wrapped once in a grid the popup can lie on top of.</summary>
-    static Grid Host(ContentPage page)
-    {
-        const string id = "value-popup-host";
-        if (page.Content is Grid { ClassId: id } host)
-            return host;
-        var content = page.Content;
-        page.Content = null;
-        host = new Grid { ClassId = id };
-        if (content is not null)
-            host.Children.Add(content);
-        page.Content = host;
-        return host;
     }
 }

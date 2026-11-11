@@ -3,7 +3,7 @@
 A .NET MAUI app (Android and Windows) with a multitouch piano keyboard, step sequencers and an
 arpeggiator that send MIDI over a class-compliant USB MIDI cable (e.g. CME C2MIDI Pro) to a
 synth with 5-pin DIN. Per MIDI channel you add views: a **1601 SEQUENCER**, a **BQ-10**, a
-**CIRKLON2**, a **DUO** or an **ARP**. Each sequencer takes the look of the hardware it is named after,
+**CIRKLON2**, a **DUO**, a **BSP SEQ** or **BSP DRUM** (Arturia BeatStep Pro) or an **ARP**. Each sequencer takes the look of the hardware it is named after,
 but with large controls that fill the screen, so it stays easy to use on a tablet. The rest
 of the app follows the Roland TR-808: charcoal panel, off-white print and orange accents.
 
@@ -19,6 +19,7 @@ of the app follows the Roland TR-808: charcoal panel, off-white print and orange
 - [BQ-10](#bq-10)
 - [Cirklon2](#cirklon2)
 - [DUO](#duo)
+- [BeatStep Pro](#beatstep-pro)
 - [Arp](#arp)
 - [Build & run](#build--run)
 - [Connecting](#connecting)
@@ -60,6 +61,8 @@ stay in step, so changing it in one view changes it everywhere.
 | BQ-10 | Behringer BQ-10 / Korg SQ-10 | 3 rows × 8 | knobs, sequence mode |
 | CIRKLON2 | Sequentix Cirklon2, one track with a P3 pattern | 1–16 bars × 16 | row view bars, step keys |
 | DUO | the sequencer side of the Dato DUO | 8 in a ring | step buttons, pentatonic keys |
+| BSP SEQ | a melodic sequence of the Arturia BeatStep Pro | 1–64, 4 pages × 16 | encoders, step buttons |
+| BSP DRUM | the drum sequence of the Arturia BeatStep Pro | 16 tracks × 1–64 | pads, encoders, step buttons |
 | ARP | – | 8-step rhythm | buttons and its own keyboard |
 
 Views, their channels, patterns and settings are saved and come back on the next start.
@@ -190,6 +193,63 @@ of the DUO is your own synth.
 - In the title bar: ▶/■ start/stop (also the button in the middle of the ring), **TEMPO** and
   **LENGTH** (note length 5–95 % of a step), ⏮ back to step 1
 
+## BeatStep Pro
+The sequencers of an Arturia BeatStep Pro: **BSP SEQ** is one melodic sequence (SEQ 1 or SEQ 2
+on the hardware), **BSP DRUM** the drum sequence with 16 tracks. Add a BSP SEQ twice to get both
+melodic sequencers. A dark panel with rows of 16 encoders, on the drum sequence two rows of
+eight pads, and 16 step buttons at the bottom that light blue when the step is on. A red frame
+shows the step that plays.
+
+One bar above the panel holds what you need while playing; it scrolls sideways on a narrow
+screen. The settings are under **⚙**, like SHIFT + pads on the hardware: a popup over the page
+whose changes apply right away; **OK** or a tap beside it closes it.
+
+Both:
+- **Encoders**: drag one up or down to turn it. They show one page of 16 steps.
+- **Step buttons**: tap to switch a step on or off.
+- In the bar:
+  - **P1–P4**: the page of 16 steps you see and edit; pages after the last step are dim.
+    **FOLLOW** follows the page that plays.
+  - **LAST** shows the length; tap it, then a step button: that is the last step (1–64). With
+    **ALL** on, an encoder moves the value of every active step by the same amount (SHIFT +
+    encoder on the hardware).
+- Under ⚙:
+  - **COPY** (e.g. *P1 → P2*): copies the page onto the next one and makes the sequence at least
+    that long, so a 64-step sequence doesn't have to be entered from scratch.
+  - **MODE**: FWD forward, REV reverse, ALT forward and back (the ends don't play twice), RND random
+  - **RATE**: the time division, 1/4, 1/8, 1/16 (default), 1/32 and the triplets 1/4T–1/32T
+  - **SWING** 50–75 %: the second step of each pair comes later; 50 % is straight.
+  - **RANDOMNESS** sets how big the changes are and **PROBABILITY** how often they happen; when
+    either is 0 nothing changes. With the probability, a note gets a velocity up to ±64 × the
+    randomness and a gate up to ±50 % of a step × the randomness different, and it is left out
+    with a chance of a third of the randomness. Once a step, with the probability × half the
+    randomness, a random step of the sequence plays instead.
+- In the title bar: ▶/■ start/stop, **TEMPO**, ⏮ back to step 1
+
+**BSP SEQ**:
+- Three rows of encoders: **PITCH** (C1–C8, from scale note to scale note), **VELO** (1–127) and
+  **GATE** (5–100 % of a step). A gate turned fully up shows **TIE**: the note lasts until the next
+  one, so it slides on a mono synth with legato, and the same pitch becomes one long note.
+- Under ⚙, **SCALE**: chromatic, major, minor, dorian, mixolydian, harmonic minor, blues (on C). The
+  notes keep their place: changing the scale moves each one to the nearest scale note below.
+- Under ⚙, **TRANSPOSE** ▼ / ▲: the whole sequence in semitones, −24 to +24
+- By default all 16 steps play C4.
+
+**BSP DRUM**:
+- **Pads**: tap one to choose its track (and hear it); the encoders and step buttons then edit
+  that track. The pads show the drum name of their note (General MIDI, from KICK on 36), and
+  light white on the steps where their track plays.
+- In the bar, what the encoders set: **VELO** (1–127), **GATE** (5–95 % of a step) or **SHIFT**
+  (the step 0–75 % of a step later)
+- In the bar, **MUTE**: a pad tap switches its track off or on. **REC**: while it runs, a pad
+  tap sets the step that plays on its track.
+- Under ⚙, **PAD** ▼ / ▲: the note of the chosen pad
+- It starts with a beat: kick on the quarters, snare on 2 and 4, closed hihat on the eighths.
+
+Not taken over: projects with 16 patterns per sequence and chaining them, the Roller/Looper
+touch strip, the control mode, live transposing with the pads, the CV/gate outputs and the
+clock and sync jacks. The shift of a drum step only goes later, not earlier.
+
 ## Arp
 <img src="docs/screenshots/arp.png" alt="Arp" width="800">
 
@@ -250,6 +310,7 @@ the channel of the piano or of the views that should play it.
 | `Controls/KeyColors.cs` | Key colours, pressed-key colour from the velocity, light green for marked keys |
 | `Controls/PageHeader.cs` | Title bar with the page title left and its main controls right |
 | `Controls/ValueButton.cs` | "TEMPO: 120 BPM" style button that opens a popup with a slider and − / + |
+| `Controls/Popup.cs` | Card over the page with a dimmed backdrop (the ValueButton popup, the BeatStep ⚙ settings) |
 | `Controls/MidiDevicePicker.cs` | MIDI device choice; a message only when nothing is connected (side menu) |
 | `Pages/SettingsPage.cs`, `Pages/CalibrationPage.cs` | Velocity settings and calibration |
 | `MainPage.xaml(.cs)` | Piano page: toolbar and wiring |
@@ -260,6 +321,8 @@ the channel of the piano or of the views that should play it.
 | `Services/BqSequencer.cs`, `Controls/BqPanel.cs`, `Pages/BqPage.cs` | BQ-10: engine with the sequence modes, drawn knobs, page |
 | `Services/CirklonSequencer.cs`, `Controls/CirklonPanel.cs`, `Pages/CirklonPage.cs` | Cirklon2: P3 pattern engine, screen + step keys, page |
 | `Services/DuoSequencer.cs`, `Controls/DuoPanel.cs`, `Pages/DuoPage.cs` | DUO: 8-step pentatonic engine, ring, keys and octave arrows, page |
+| `Services/BeatStepSequence.cs`, `BeatStepSeq.cs`, `BeatStepDrum.cs` | BeatStep Pro: shared 64-step engine with mode, rate, swing, randomness and probability; the melodic and the drum sequence |
+| `Controls/BeatStepPanel.cs`, `Pages/BeatStepPage.cs` | BeatStep Pro: encoders, pads and step buttons; one page for both kinds |
 | `Services/Arpeggiator.cs`, `Pages/ArpPage.cs` | Arp: engine with held/latched notes and rhythm, page with its own keyboard |
 
 ## How it works
@@ -274,8 +337,8 @@ vibration would otherwise show up in the measurement.
 ### Timing
 All views run on one clock thread (`MusicClock`) with a `Stopwatch`, independent of the UI,
 at 24 ticks per quarter note: a 1601 or BQ-10 step is 6 ticks, a DUO step 24 / 12 / 6, an arp step 24 / 12 / 8 / 6
-ticks depending on its rate. The Cirklon2 counts in half ticks, so its 64th timebase (1.5
-ticks) also fits; its delayed notes wait in a queue on the same thread. The thread only runs
+ticks depending on its rate, a BeatStep Pro step 24 down to 2 ticks. The Cirklon2 counts in half ticks, so its 64th timebase (1.5
+ticks) also fits; its delayed notes wait in a queue on the same thread, as do the swung and shifted notes of the BeatStep Pro. The thread only runs
 while something plays; whatever joins a running clock falls in on its grid. It sleeps in 1 ms
 slices and yields for the last few milliseconds before a tick or note-off. On Windows it asks
 for a 1 ms timer resolution while running (`timeBeginPeriod`), because the default is about
